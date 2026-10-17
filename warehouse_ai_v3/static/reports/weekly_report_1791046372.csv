@@ -1,7 +1,0 @@
---- LIVE ACTIVITY (MOVEMENTS) ---
-Date,Item,Quantity,Direction,Status,Verified By
-2026-10-03 15:57,sofa,11,IN,Deleted,MAN001
-
---- ISSUES & FLAGS ---
-Date,Item,Type,Description,Status,Resolved By
-2026-10-03 16:10,sofa,Damage,k,Resolved,MAN001
