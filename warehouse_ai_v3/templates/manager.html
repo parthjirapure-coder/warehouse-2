@@ -1,0 +1,1035 @@
+{% extends 'base.html' %}
+{% block title %}Manager - Warehouse Management{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 24px;">
+    <h1 style="margin: 0;">Manager Control Center</h1>
+</div>
+
+<div class="grid-cards">
+    <div class="glass stat-card">
+        <div class="stat-label">📥 INCOMING ITEMS</div>
+        <div class="stat-value" id="tin" style="color: #34d399;">{{ total_in }}</div>
+    </div>
+    <div class="glass stat-card">
+        <div class="stat-label">📤 DISPATCHED ITEMS</div>
+        <div class="stat-value" id="tout" style="color: #60a5fa;">{{ total_out }}</div>
+    </div>
+    <div class="glass stat-card">
+        <div class="stat-label">🚨 OPEN ISSUES</div>
+        <div class="stat-value" id="issues" style="color: #f87171;">{{ open_issues }}</div>
+    </div>
+    <div class="glass stat-card" style="cursor: pointer;" onclick="window.location.href='/users'" title="View Active Employees">
+        <div class="stat-label">👥 ACTIVE EMPLOYEES (WORKING)</div>
+        <div class="stat-value" id="active_emp" style="color: #c084fc;">{{ employees }}</div>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <div>
+        <!-- Employee Performance Panel -->
+        <div class="glass panel" style="margin-bottom: 24px;">
+            <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <h2 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <span class="live-pulse-dot" style="width: 8px; height: 8px; margin-right: 0;"></span> ⚡ Employee Performance
+                </h2>
+                <div>
+                    <span style="font-size: 10px; background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); padding: 2px 6px; border-radius: 4px; font-weight: 600; letter-spacing: 0.5px;">REAL-TIME</span>
+                </div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Employee</th>
+                        <th>Status</th>
+                        <th>Total Logs</th>
+                        <th>Verified</th>
+                        <th>Accuracy</th>
+                        <th>Score</th>
+                    </tr>
+                </thead>
+                <tbody id="employee_perf_tbody">
+                {% for perf in employee_perf %}
+                <tr>
+                    <td><b>{{ perf.name }}</b> <span style="font-size: 11px; color: var(--text-muted);">{{ perf.user_id }}</span></td>
+                    <td><span class="status-badge" style="font-size: 11px; {% if 'Online' in perf.work_status %}background: rgba(16, 185, 129, 0.2); color: #34d399;{% else %}background: rgba(255, 255, 255, 0.05); color: #94a3b8;{% endif %}">{{ perf.work_status }}</span></td>
+                    <td>{{ perf.total_logs }}</td>
+                    <td><span style="color: #34d399; font-weight: 600;">{{ perf.verified_logs }}</span></td>
+                    <td><span style="color: #38bdf8; font-weight: 600;">{{ perf.accuracy_rate }}</span></td>
+                    <td><span class="status-badge" style="background: rgba(6, 182, 212, 0.2); color: #22d3ee; font-weight: bold;">{{ perf.score }}</span></td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 12px;">No employees active.</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="glass panel">
+            <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <h2 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <span class="live-pulse-dot" style="width: 8px; height: 8px; margin-right: 0;"></span> ⚡ Verify Live Activity
+                </h2>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span id="manager_live_status_badge" style="font-size: 11px; padding: 3px 10px; border-radius: 12px; background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                        <span class="live-pulse-dot" style="width: 6px; height: 6px; margin: 0;"></span>
+                        <span id="manager_live_status_text">● LIVE REAL-TIME</span>
+                    </span>
+                    <span id="manager_activity_counter" style="font-size: 11px; color: var(--text-muted); font-family: monospace;">{{ movements|length }} items</span>
+                </div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th>Item</th>
+                        <th>Qty</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="manager_activity_tbody">
+                {% for m in movements %}
+                <tr id="movement_row_{{ m.id }}">
+                    <td>{{ m.created_at.strftime("%d %b %Y") }}</td>
+                    <td>{{ m.created_at.strftime("%H:%M") }}</td>
+                    <td><b{% if m.note %} title="{{ m.note }}"{% endif %}>{{ m.item }}</b></td>
+                    <td>{{ m.quantity }}</td>
+                    <td>
+                        {% if m.direction=="IN" %}
+                        <span style="color: #10b981; font-weight: bold;">▲ IN</span>
+                        {% else %}
+                        <span style="color: #60a5fa; font-weight: bold;">▼ OUT</span>
+                        {% endif %}
+                    </td>
+                    <td><span class="status-badge status-{{ m.status }}">{{ m.status }}</span></td>
+                    <td>
+                        <div style="display: flex; gap: 8px;">
+                            <button type="button" onclick="verifyMovementManagerAjax(event, {{ m.id }}, 'Verified')" title="Mark Right" style="background: rgba(16,185,129,0.2); color: #34d399; border: 1px solid #34d399; padding: 4px 8px; border-radius: 6px; cursor: pointer;">✔</button>
+                            <button type="button" onclick="verifyMovementManagerAjax(event, {{ m.id }}, 'Flagged')" title="Mark Wrong" style="background: rgba(239,68,68,0.2); color: #f87171; border: 1px solid #f87171; padding: 4px 8px; border-radius: 6px; cursor: pointer;">✖</button>
+                            <button type="button" onclick="deleteMovementManagerAjax(event, {{ m.id }})" title="Delete" style="background: rgba(239,68,68,0.2); color: #f87171; border: 1px solid #f87171; padding: 4px 8px; border-radius: 6px; cursor: pointer;">🗑️</button>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr id="manager_stream_empty_row"><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 16px;">No activity logged yet.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="glass panel">
+            <div class="panel-header">
+                <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                    <h2>🚨 Open Issues & Flags</h2>
+                    <span style="font-size: 10px; background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 6px; border-radius: 4px; font-weight: 600; letter-spacing: 0.5px;">REAL-TIME</span>
+                </div>
+            </div>
+            <div id="manager_open_issues_container">
+            {% for i in issues_list %}
+            <div class="message-box" id="issue_box_{{ i.id }}" style="border-left-color: var(--danger);">
+                <div class="msg-meta">
+                    <span>{{ i.issue_type }}</span>
+                    <span>By {{ i.created_by }}</span>
+                </div>
+                <div class="msg-title">{{ i.item }}</div>
+                <div class="msg-body">{{ i.description }}</div>
+                {% if i.photo %}
+                <div style="margin-top: 12px;">
+                    <img src="{{ url_for('static', filename='issues/' + i.photo) }}" style="max-width: 100%; max-height: 200px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+                </div>
+                {% endif %}
+                
+                <div style="margin-top: 16px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                    <h4 style="margin: 0 0 10px 0; font-size: 13px; color: var(--primary);">💬 Discussion</h4>
+                    <div id="issue_discussion_{{ i.id }}">
+                    {% for c in i.comments %}
+                        <div style="margin-bottom: 8px; font-size: 13px;">
+                            <span style="color: #a78bfa; font-weight: bold;">{{ c.sender_id }}:</span> 
+                            <span style="color: var(--text-main);">{{ c.body }}</span>
+                            <span style="font-size: 10px; color: var(--text-muted); float: right;">{{ c.created_at.strftime("%H:%M") }}</span>
+                        </div>
+                    {% else %}
+                        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">No comments yet.</div>
+                    {% endfor %}
+                    </div>
+                    
+                    <form onsubmit="handleIssueCommentSubmit(event, {{ i.id }})" style="display: flex; gap: 8px; margin-top: 10px;">
+                        <input type="text" name="body" placeholder="Add a comment..." required style="flex: 1; padding: 6px; font-size: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: white;">
+                        <button type="submit" class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;">Post</button>
+                    </form>
+                </div>
+                <div style="margin-top: 10px;">
+                    <button type="button" onclick="resolveIssueManagerAjax(event, {{ i.id }})" class="btn btn-success" style="padding: 6px 12px; font-size: 13px;">Mark Resolved</button>
+                </div>
+            </div>
+            {% else %}
+            <p style="color: var(--text-muted);">✅ No active issues.</p>
+            {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div>
+        <div class="glass panel common-terminal">
+            <div class="panel-header" style="border-bottom-color: rgba(139, 92, 246, 0.3);">
+                <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                    <h2 class="terminal-header">COMMON_TERMINAL</h2>
+                    <span style="font-size: 10px; background: rgba(139, 92, 246, 0.15); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, 0.3); padding: 2px 6px; border-radius: 4px; font-weight: 600; letter-spacing: 0.5px;">● LIVE REAL-TIME</span>
+                </div>
+            </div>
+            <div id="common_terminal_stream" style="max-height: 250px; overflow-y: auto; margin-bottom: 20px;">
+                {% for m in common_messages %}
+                <div class="message-box message-common" id="broadcast_msg_{{ m.id }}">
+                    <div class="msg-meta">
+                        <span>Broadcast by {{ m.sender_id }}</span>
+                        <span>{{ m.created_at.strftime("%d %b %H:%M") }}</span>
+                    </div>
+                    <div class="msg-title">{{ m.subject }}</div>
+                    <div class="msg-body">{{ m.body }}</div>
+                    {% if m.sender_id == user.user_id or not m.sender_id.startswith('SUP') %}
+                    <div style="margin-top: 8px;">
+                        <button class="btn btn-danger" onclick="deleteBroadcastAjax(event, {{ m.id }})" style="padding: 4px 8px; font-size: 12px; background: rgba(239,68,68,0.2); color: #f87171; border: 1px solid #f87171;">🗑️</button>
+                    </div>
+                    {% endif %}
+                </div>
+                {% else %}
+                <p id="common_terminal_empty" style="color: var(--text-muted);">No broadcasts.</p>
+                {% endfor %}
+            </div>
+            
+            <hr style="border: 0; border-top: 1px solid rgba(139, 92, 246, 0.3); margin: 20px 0;">
+            <h3 style="color: #c4b5fd; font-size: 14px;">> TRANSMIT_BROADCAST</h3>
+            <form id="commonBroadcastForm" action="/message/send" method="post" onsubmit="event.preventDefault(); handleCommonBroadcastSubmit(event);">
+                <input type="hidden" name="msg_type" value="common">
+                <input type="hidden" name="receiver_id" value="ALL">
+                <label style="color: #a78bfa;">Subject</label>
+                <input name="subject" id="broadcast_subject" placeholder="Daily summary" required style="border-color: rgba(139,92,246,0.3);">
+                <label style="color: #a78bfa;">Message</label>
+                <textarea name="body" id="broadcast_body" required style="border-color: rgba(139,92,246,0.3);"></textarea>
+                <button type="submit" id="broadcastSubmitBtn" class="btn btn-purple" style="width: 100%;">Broadcast to All</button>
+            </form>
+        </div>
+
+        <div class="glass panel">
+            <div class="panel-header">
+                <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                    <h2>🔒 Confidential Inbox <span style="background: var(--danger); padding: 2px 8px; border-radius: 10px; font-size: 12px; margin-left: 8px;" id="unread">{{ unread }}</span></h2>
+                    <span style="font-size: 10px; background: rgba(139, 92, 246, 0.15); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, 0.3); padding: 2px 6px; border-radius: 4px; font-weight: 600; letter-spacing: 0.5px;">SECURE LIVE</span>
+                </div>
+            </div>
+            <div id="confidential_inbox_list" style="max-height: 400px; overflow-y: auto;">
+            {% for m in messages %}
+            <div class="message-box" id="inbox_msg_{{ m.id }}" style="{% if not m.is_read and m.receiver_id == user.user_id %}border-left-color: var(--warning);{% endif %}">
+                <div class="msg-meta">
+                    {% if m.sender_id == user.user_id %}
+                        <span style="color: var(--success); cursor: pointer; text-decoration: underline;" onclick="quickMessage('{{ m.receiver_id }}')" title="Direct Message">Sent to {{ m.receiver_id }}</span>
+                    {% else %}
+                        <span style="cursor: pointer; color: var(--primary); text-decoration: underline;" onclick="quickMessage('{{ m.sender_id }}')" title="Direct Message">From {{ m.sender_id }}</span>
+                    {% endif %}
+                    <span>{{ m.created_at.strftime("%d %b %H:%M") }}</span>
+                </div>
+                <div class="msg-title">{{ m.subject }}</div>
+                <div class="msg-body">{{ m.body }}</div>
+                <div style="margin-top: 10px; display: flex; gap: 8px;">
+                    {% set other_user = m.receiver_id if m.sender_id == user.user_id else m.sender_id %}
+                    <a href="/conversation/{{ user.user_id }}/{{ other_user }}" class="btn" style="padding: 6px 12px; font-size: 13px; background: rgba(139,92,246,0.2); color: #c4b5fd; text-decoration: none;">View History</a>
+                    {% if not m.is_read and m.receiver_id == user.user_id %}
+                    <button class="btn" onclick="markMessageReadAjax(event, {{ m.id }})" style="padding: 6px 12px; font-size: 13px; background: rgba(255,255,255,0.1);">Mark Read</button>
+                    {% endif %}
+                    <button class="btn btn-purple" style="padding: 6px 12px; font-size: 13px;" onclick="replyTo('{{ other_user }}')">Reply</button>
+                    <button class="btn btn-danger" onclick="deleteConversationAjax(event, '{{ user.user_id }}', '{{ other_user }}')" style="padding: 6px 12px; font-size: 13px;">🗑️</button>
+                </div>
+            </div>
+            {% else %}
+            <p style="color: var(--text-muted);">No confidential messages.</p>
+            {% endfor %}
+            </div>
+
+            <hr style="border: 0; border-top: 1px solid var(--glass-border); margin: 20px 0;">
+            
+            <h3>Send Secure Message</h3>
+            <form id="secureMsgForm" action="/message/send" method="post" onsubmit="event.preventDefault(); handleSecureMessageSubmit(event);">
+                <input type="hidden" name="msg_type" value="confidential">
+                <label>Receiver ID</label>
+                <select name="receiver_id" id="secureReceiverSelect" required style="background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); color: var(--text-main); padding: 12px 16px; border-radius: 10px; width: 100%; margin-bottom: 16px;">
+                    <option value="" disabled selected>Whom to send?</option>
+                    <optgroup label="🟢 Logged In & Working (Active)" id="optgroup_active">
+                        {% for u in active_users %}
+                            {% if u.user_id != user.user_id %}
+                            <option value="{{ u.user_id }}">🟢 {{ u.name }} ({{ u.role|capitalize }})</option>
+                            {% endif %}
+                        {% endfor %}
+                    </optgroup>
+                    <optgroup label="⚪ Logged Out (Offline)" id="optgroup_offline">
+                        {% for u in offline_users %}
+                            {% if u.user_id != user.user_id %}
+                            <option value="{{ u.user_id }}">⚪ {{ u.name }} ({{ u.role|capitalize }})</option>
+                            {% endif %}
+                        {% endfor %}
+                    </optgroup>
+                </select>
+                <label>Message</label>
+                <textarea name="body" required placeholder="Type confidential message..."></textarea>
+                <button type="submit" class="btn btn-purple" style="width: 100%;">Send Secure</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+let prevMovementsJson = '';
+let prevEmpPerfJson = '';
+let highestSeenMovementId = {{ movements[0].id if movements else 0 }};
+let isInitialMovementLoad = true;
+let currentUserId = '{{ user.user_id }}';
+const liveChannel = ('BroadcastChannel' in window) ? new BroadcastChannel('warehouse_live_activity') : null;
+
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function updateManagerLiveCount() {
+    const tbody = document.getElementById('manager_activity_tbody');
+    const counterEl = document.getElementById('manager_activity_counter');
+    if (tbody && counterEl) {
+        const rows = tbody.querySelectorAll('tr[id^="movement_row_"]');
+        counterEl.textContent = rows.length + ' items';
+    }
+}
+
+function updateDashboardStats(stats) {
+    if (!stats) return;
+    const tinEl = document.getElementById('tin');
+    if (tinEl && stats.total_in !== undefined) tinEl.textContent = stats.total_in;
+    const toutEl = document.getElementById('tout');
+    if (toutEl && stats.total_out !== undefined) toutEl.textContent = stats.total_out;
+    const issuesEl = document.getElementById('issues');
+    if (issuesEl && stats.open_issues !== undefined) issuesEl.textContent = stats.open_issues;
+    const empEl = document.getElementById('active_emp');
+    if (empEl && stats.employees !== undefined) empEl.textContent = stats.employees;
+}
+
+function renderSingleManagerMovementRow(m, isNew) {
+    const inBadge = '<span style="color: #10b981; font-weight: bold;">▲ IN</span>';
+    const outBadge = '<span style="color: #60a5fa; font-weight: bold;">▼ OUT</span>';
+    const displayTime = m.time ? m.time.slice(0, 5) : '';
+    const noteAttr = m.note ? ` title="${escapeHtml(m.note)}"` : '';
+
+    return `
+    <tr id="movement_row_${m.id}" class="${isNew ? 'row-highlight-new' : ''}">
+        <td>${escapeHtml(m.date)}</td>
+        <td>${escapeHtml(displayTime)}</td>
+        <td><b${noteAttr}>${escapeHtml(m.item)}</b></td>
+        <td>${escapeHtml(m.quantity)}</td>
+        <td>${m.direction === 'IN' ? inBadge : outBadge}</td>
+        <td><span class="status-badge status-${escapeHtml(m.status)}">${escapeHtml(m.status)}</span></td>
+        <td>
+            <div style="display: flex; gap: 8px;">
+                <button type="button" onclick="verifyMovementManagerAjax(event, ${m.id}, 'Verified')" title="Mark Right" style="background: rgba(16,185,129,0.2); color: #34d399; border: 1px solid #34d399; padding: 4px 8px; border-radius: 6px; cursor: pointer;">✔</button>
+                <button type="button" onclick="verifyMovementManagerAjax(event, ${m.id}, 'Flagged')" title="Mark Wrong" style="background: rgba(239,68,68,0.2); color: #f87171; border: 1px solid #f87171; padding: 4px 8px; border-radius: 6px; cursor: pointer;">✖</button>
+                <button type="button" onclick="deleteMovementManagerAjax(event, ${m.id})" title="Delete" style="background: rgba(239,68,68,0.2); color: #f87171; border: 1px solid #f87171; padding: 4px 8px; border-radius: 6px; cursor: pointer;">🗑️</button>
+            </div>
+        </td>
+    </tr>`;
+}
+
+function renderManagerMovementRows(movements, isFirstLoad) {
+    if (!movements || movements.length === 0) {
+        return '<tr id="manager_stream_empty_row"><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 16px;">No activity logged yet.</td></tr>';
+    }
+    return movements.map(m => {
+        const isNew = !isFirstLoad && (m.id > highestSeenMovementId);
+        return renderSingleManagerMovementRow(m, isNew);
+    }).join('');
+}
+
+function renderEmployeePerformanceRows(perfList) {
+    if (!perfList || perfList.length === 0) {
+        return '<tr><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 12px;">No employees active.</td></tr>';
+    }
+    return perfList.map(perf => {
+        const isOnline = perf.work_status && perf.work_status.includes('Online');
+        const statusStyle = isOnline 
+            ? 'background: rgba(16, 185, 129, 0.2); color: #34d399;' 
+            : 'background: rgba(255, 255, 255, 0.05); color: #94a3b8;';
+        return `<tr>
+            <td><b>${escapeHtml(perf.name)}</b> <span style="font-size: 11px; color: var(--text-muted);">${escapeHtml(perf.user_id)}</span></td>
+            <td><span class="status-badge" style="font-size: 11px; ${statusStyle}">${escapeHtml(perf.work_status)}</span></td>
+            <td>${perf.total_logs}</td>
+            <td><span style="color: #34d399; font-weight: 600;">${perf.verified_logs}</span></td>
+            <td><span style="color: #38bdf8; font-weight: 600;">${escapeHtml(perf.accuracy_rate)}</span></td>
+            <td><span class="status-badge" style="background: rgba(6, 182, 212, 0.2); color: #22d3ee; font-weight: bold;">${perf.score}</span></td>
+        </tr>`;
+    }).join('');
+}
+
+function handleLiveActivityEvent(data) {
+    if (!data) return;
+    const tbody = document.getElementById('manager_activity_tbody');
+    if (!tbody) return;
+
+    if (data.action === 'created' && data.movement) {
+        const m = data.movement;
+        if (document.getElementById('movement_row_' + m.id)) return;
+        const emptyRow = document.getElementById('manager_stream_empty_row') || tbody.querySelector('td[colspan="7"]');
+        if (emptyRow) {
+            const tr = emptyRow.closest('tr');
+            if (tr) tr.remove();
+        }
+        
+        const rowHtml = renderSingleManagerMovementRow(m, true);
+        tbody.insertAdjacentHTML('afterbegin', rowHtml);
+        if (m.id > highestSeenMovementId) highestSeenMovementId = m.id;
+        updateManagerLiveCount();
+        showLiveToast(`⚡ <b>${m.direction === 'IN' ? '📥 IN' : '📤 OUT'}</b>: ${m.quantity}x ${escapeHtml(m.item)} logged by <b>${escapeHtml(m.created_by)}</b>`, 'activity');
+    } else if (data.action === 'batch_created' && Array.isArray(data.movements)) {
+        const emptyRow = document.getElementById('manager_stream_empty_row') || tbody.querySelector('td[colspan="7"]');
+        if (emptyRow) {
+            const tr = emptyRow.closest('tr');
+            if (tr) tr.remove();
+        }
+        data.movements.forEach(m => {
+            if (!document.getElementById('movement_row_' + m.id)) {
+                tbody.insertAdjacentHTML('afterbegin', renderSingleManagerMovementRow(m, true));
+                if (m.id > highestSeenMovementId) highestSeenMovementId = m.id;
+            }
+        });
+        updateManagerLiveCount();
+        showLiveToast(`⚡ <b>Imported ${data.movements.length} items</b> into Live Activity Stream!`, 'activity');
+    } else if (data.action === 'verified') {
+        const row = document.getElementById('movement_row_' + data.id);
+        if (row) {
+            const statusBadge = row.querySelector('.status-badge');
+            if (statusBadge) {
+                statusBadge.className = 'status-badge status-' + data.status + ' row-status-pulsed';
+                statusBadge.textContent = data.status;
+            }
+        }
+    } else if (data.action === 'deleted' || data.action === 'manager_deleted' || data.action === 'hard_deleted') {
+        const row = document.getElementById('movement_row_' + data.id);
+        if (row) {
+            row.classList.add('row-fade-out');
+            setTimeout(() => {
+                row.remove();
+                updateManagerLiveCount();
+                if (tbody.querySelectorAll('tr[id^="movement_row_"]').length === 0) {
+                    tbody.innerHTML = '<tr id="manager_stream_empty_row"><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 16px;">No activity logged yet.</td></tr>';
+                }
+            }, 350);
+        }
+    } else if (data.action === 'restored' && data.movement) {
+        const mgrTbody = document.getElementById('manager_activity_tbody');
+        if (mgrTbody && !document.getElementById('movement_row_' + data.id)) {
+            const emptyRow = document.getElementById('manager_stream_empty_row');
+            if (emptyRow) emptyRow.remove();
+            mgrTbody.insertAdjacentHTML('afterbegin', renderSingleManagerMovementRow(data.movement, true));
+            updateManagerLiveCount();
+            showLiveToast(`↩️ Task #${data.id} (${escapeHtml(data.movement.item)}) restored by Supervisor!`, 'info');
+        }
+    } else if (data.action === 'common_broadcast' && data.message) {
+        const stream = document.getElementById('common_terminal_stream');
+        if (stream) {
+            const empty = document.getElementById('common_terminal_empty') || stream.querySelector('p');
+            if (empty && empty.textContent.includes('No broadcasts')) empty.remove();
+            if (!document.getElementById('broadcast_msg_' + data.message.id)) {
+                const canDelete = (data.message.sender_id === currentUserId || !data.message.sender_id.startsWith('SUP'));
+                const html = `
+                <div class="message-box message-common item-highlight-new" id="broadcast_msg_${data.message.id}">
+                    <div class="msg-meta">
+                        <span>Broadcast by ${escapeHtml(data.message.sender_id)}</span>
+                        <span>${escapeHtml(data.message.created_at)}</span>
+                    </div>
+                    <div class="msg-title">${escapeHtml(data.message.subject)}</div>
+                    <div class="msg-body">${escapeHtml(data.message.body)}</div>
+                    ${canDelete ? `
+                    <div style="margin-top: 8px;">
+                        <button class="btn btn-danger" onclick="deleteBroadcastAjax(event, ${data.message.id})" style="padding: 4px 8px; font-size: 12px; background: rgba(239,68,68,0.2); color: #f87171; border: 1px solid #f87171;">🗑️</button>
+                    </div>` : ''}
+                </div>`;
+                stream.insertAdjacentHTML('afterbegin', html);
+                showLiveToast(`📢 <b>[COMMON_TERMINAL]</b> ${escapeHtml(data.message.sender_id)}: ${escapeHtml(data.message.subject)}`, 'activity');
+            }
+        }
+    } else if (data.action === 'message_deleted') {
+        const bMsg = document.getElementById('broadcast_msg_' + data.id);
+        if (bMsg) {
+            bMsg.classList.add('row-fade-out');
+            setTimeout(() => {
+                bMsg.remove();
+                const stream = document.getElementById('common_terminal_stream');
+                if (stream && stream.querySelectorAll('.message-box').length === 0) {
+                    stream.innerHTML = '<p id="common_terminal_empty" style="color: var(--text-muted);">No broadcasts.</p>';
+                }
+            }, 350);
+        }
+        const inMsg = document.getElementById('inbox_msg_' + data.id);
+        if (inMsg) {
+            inMsg.classList.add('row-fade-out');
+            setTimeout(() => inMsg.remove(), 350);
+        }
+    } else if (data.action === 'confidential_message' && data.message) {
+        const m = data.message;
+        const inbox = document.getElementById('confidential_inbox_list');
+        if (inbox && (m.receiver_id === currentUserId || m.sender_id === currentUserId)) {
+            const empty = inbox.querySelector('p');
+            if (empty && empty.textContent.includes('No confidential messages')) empty.remove();
+            if (!document.getElementById('inbox_msg_' + m.id)) {
+                const otherUser = (m.sender_id === currentUserId) ? m.receiver_id : m.sender_id;
+                const html = `
+                <div class="message-box item-highlight-new" id="inbox_msg_${m.id}" style="${(!m.is_read && m.receiver_id === currentUserId) ? 'border-left-color: var(--warning);' : ''}">
+                    <div class="msg-meta">
+                        ${m.sender_id === currentUserId ? `
+                            <span style="color: var(--success); cursor: pointer; text-decoration: underline;" onclick="quickMessage('${escapeHtml(m.receiver_id)}')">Sent to ${escapeHtml(m.receiver_id)}</span>
+                        ` : `
+                            <span style="cursor: pointer; color: var(--primary); text-decoration: underline;" onclick="quickMessage('${escapeHtml(m.sender_id)}')">From ${escapeHtml(m.sender_id)}</span>
+                        `}
+                        <span>${escapeHtml(m.created_at)}</span>
+                    </div>
+                    <div class="msg-title">${escapeHtml(m.subject)}</div>
+                    <div class="msg-body">${escapeHtml(m.body)}</div>
+                    <div style="margin-top: 10px; display: flex; gap: 8px;">
+                        <a href="/conversation/${encodeURIComponent(currentUserId)}/${encodeURIComponent(otherUser)}" class="btn" style="padding: 6px 12px; font-size: 13px; background: rgba(139,92,246,0.2); color: #c4b5fd; text-decoration: none;">View History</a>
+                        ${(!m.is_read && m.receiver_id === currentUserId) ? `
+                        <button class="btn" onclick="markMessageReadAjax(event, ${m.id})" style="padding: 6px 12px; font-size: 13px; background: rgba(255,255,255,0.1);">Mark Read</button>
+                        ` : ''}
+                        <button class="btn btn-purple" style="padding: 6px 12px; font-size: 13px;" onclick="replyTo('${escapeHtml(otherUser)}')">Reply</button>
+                        <button class="btn btn-danger" onclick="deleteConversationAjax(event, '${escapeHtml(currentUserId)}', '${escapeHtml(otherUser)}')" style="padding: 6px 12px; font-size: 13px;">🗑️</button>
+                    </div>
+                </div>`;
+                inbox.insertAdjacentHTML('afterbegin', html);
+                if (m.receiver_id === currentUserId) {
+                    const unreadEl = document.getElementById('unread');
+                    if (unreadEl) {
+                        const count = parseInt(unreadEl.textContent || '0') + 1;
+                        unreadEl.textContent = count;
+                    }
+                    showLiveToast(`🔒 <b>Confidential Message</b> from <b>${escapeHtml(m.sender_id)}</b>: ${escapeHtml(m.subject)}`, 'activity');
+                }
+            }
+        }
+    } else if (data.action === 'message_read') {
+        const msg = document.getElementById('inbox_msg_' + data.id);
+        if (msg) {
+            msg.style.borderLeftColor = '';
+            const markBtn = msg.querySelector('button[onclick*="markMessageReadAjax"]');
+            if (markBtn) markBtn.remove();
+        }
+        if (data.receiver_id === currentUserId) {
+            const unreadEl = document.getElementById('unread');
+            if (unreadEl && typeof data.unread !== 'undefined') unreadEl.textContent = data.unread;
+        }
+    } else if (data.action === 'conversation_deleted') {
+        const inbox = document.getElementById('confidential_inbox_list');
+        if (inbox) {
+            const cards = inbox.querySelectorAll('.message-box');
+            cards.forEach(card => {
+                if (card.innerHTML.includes(data.u1) && card.innerHTML.includes(data.u2)) {
+                    card.classList.add('row-fade-out');
+                    setTimeout(() => card.remove(), 350);
+                }
+            });
+        }
+    } else if (data.action === 'issue_created' && data.issue) {
+        const iss = data.issue;
+        const container = document.getElementById('manager_open_issues_container');
+        if (container) {
+            const empty = container.querySelector('p');
+            if (empty && empty.textContent.includes('No active issues')) empty.remove();
+            if (!document.getElementById('issue_box_' + iss.id)) {
+                const html = `
+                <div class="message-box danger-highlight-new" id="issue_box_${iss.id}" style="border-left-color: var(--danger);">
+                    <div class="msg-meta">
+                        <span>${escapeHtml(iss.issue_type)}</span>
+                        <span>By ${escapeHtml(iss.created_by)}</span>
+                    </div>
+                    <div class="msg-title">${escapeHtml(iss.item)}</div>
+                    <div class="msg-body">${escapeHtml(iss.description)}</div>
+                    ${iss.photo ? `
+                    <div style="margin-top: 12px;">
+                        <img src="/static/issues/${escapeHtml(iss.photo)}" style="max-width: 100%; max-height: 200px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+                    </div>` : ''}
+                    <div style="margin-top: 16px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                        <h4 style="margin: 0 0 10px 0; font-size: 13px; color: var(--primary);">💬 Discussion</h4>
+                        <div id="issue_discussion_${iss.id}">
+                            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">No comments yet.</div>
+                        </div>
+                        <form onsubmit="handleIssueCommentSubmit(event, ${iss.id})" style="display: flex; gap: 8px; margin-top: 10px;">
+                            <input type="text" name="body" placeholder="Add a comment..." required style="flex: 1; padding: 6px; font-size: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: white;">
+                            <button type="submit" class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;">Post</button>
+                        </form>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <button type="button" onclick="resolveIssueManagerAjax(event, ${iss.id})" class="btn btn-success" style="padding: 6px 12px; font-size: 13px;">Mark Resolved</button>
+                    </div>
+                </div>`;
+                container.insertAdjacentHTML('afterbegin', html);
+                showLiveToast(`🚨 <b>New Operational Issue:</b> ${escapeHtml(iss.item)} (${escapeHtml(iss.issue_type)}) by ${escapeHtml(iss.created_by)}`, 'warning');
+            }
+        }
+    } else if (data.action === 'issue_commented' && data.comment) {
+        const disc = document.getElementById('issue_discussion_' + data.issue_id);
+        if (disc) {
+            const empty = disc.querySelector('div');
+            if (empty && empty.textContent.includes('No comments yet')) empty.remove();
+            const commentHtml = `
+            <div class="item-highlight-new" style="margin-bottom: 8px; font-size: 13px; padding: 4px 6px; border-radius: 6px;">
+                <span style="color: #a78bfa; font-weight: bold;">${escapeHtml(data.comment.sender_id)}:</span> 
+                <span style="color: var(--text-main);">${escapeHtml(data.comment.body)}</span>
+                <span style="font-size: 10px; color: var(--text-muted); float: right;">${escapeHtml(data.comment.time)}</span>
+            </div>`;
+            disc.insertAdjacentHTML('beforeend', commentHtml);
+        }
+    } else if (data.action === 'issue_resolved') {
+        const box = document.getElementById('issue_box_' + data.issue_id);
+        if (box) {
+            box.classList.add('row-fade-out');
+            setTimeout(() => {
+                box.remove();
+                const container = document.getElementById('manager_open_issues_container');
+                if (container && container.querySelectorAll('.message-box').length === 0) {
+                    container.innerHTML = '<p style="color: var(--text-muted);">✅ No active issues.</p>';
+                }
+            }, 350);
+        }
+        showLiveToast(`✔ Issue #${data.issue_id} marked as resolved by ${escapeHtml(data.resolved_by)}`, 'success');
+    } else if (data.action === 'issue_deleted') {
+        const box = document.getElementById('issue_box_' + data.issue_id);
+        if (box) {
+            box.classList.add('row-fade-out');
+            setTimeout(() => box.remove(), 350);
+        }
+    }
+
+    if (data.stats) {
+        updateDashboardStats(data.stats);
+    }
+    if (['created', 'batch_created', 'verified', 'deleted', 'manager_deleted', 'hard_deleted', 'restored', 'issue_resolved'].includes(data.action)) {
+        setTimeout(poll, 120);
+    }
+}
+
+async function verifyMovementManagerAjax(e, movementId, action) {
+    e.preventDefault();
+    try {
+        let formData = new FormData();
+        formData.append('action', action);
+        let res = await fetch(`/movement/${movementId}/verify`, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
+        });
+        let data = await res.json();
+        if (data.ok) {
+            handleLiveActivityEvent({ action: 'verified', id: movementId, status: action, verified_by: currentUserId, stats: data.stats });
+            if (liveChannel) liveChannel.postMessage({ action: 'verified', id: movementId, status: action, verified_by: currentUserId, stats: data.stats });
+            showLiveToast(`${action === 'Verified' ? '✔' : '✖'} Movement #${movementId} marked as ${action}.`, action === 'Verified' ? 'success' : 'warning');
+            poll();
+        } else {
+            showLiveToast('❌ ' + (data.error || 'Failed to update'), 'error');
+        }
+    } catch(err) {
+        console.error(err);
+    }
+}
+
+async function deleteMovementManagerAjax(e, movementId) {
+    e.preventDefault();
+    try {
+        let res = await fetch(`/movement/${movementId}/delete`, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        let data = await res.json();
+        if (data.ok) {
+            handleLiveActivityEvent({ action: 'deleted', id: movementId, stats: data.stats });
+            if (liveChannel) liveChannel.postMessage({ 
+                action: 'manager_deleted', 
+                id: movementId, 
+                item: data.item,
+                quantity: data.quantity,
+                direction: data.direction,
+                status: 'Deleted',
+                deleted_by: data.deleted_by,
+                verified_by: data.verified_by,
+                stats: data.stats 
+            });
+            showLiveToast('🗑️ Movement marked as deleted.', 'info');
+            poll();
+        } else {
+            showLiveToast('❌ ' + (data.error || 'Failed to delete'), 'error');
+        }
+    } catch(err) {
+        console.error(err);
+    }
+}
+
+async function handleCommonBroadcastSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
+    const submitBtn = document.getElementById('broadcastSubmitBtn');
+    const origText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Transmitting...';
+    try {
+        const formData = new FormData(form);
+        let res = await fetch('/message/send', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
+        });
+        let data = await res.json();
+        if (data.ok && data.broadcast) {
+            document.getElementById('broadcast_subject').value = '';
+            document.getElementById('broadcast_body').value = '';
+            handleLiveActivityEvent({ action: 'common_broadcast', message: data.broadcast });
+            if (liveChannel) liveChannel.postMessage({ action: 'common_broadcast', message: data.broadcast });
+            showLiveToast('📢 Broadcast transmitted successfully!', 'success');
+        } else {
+            showLiveToast('❌ ' + (data.error || 'Failed to broadcast'), 'error');
+        }
+    } catch(err) {
+        showLiveToast('❌ Network error transmitting broadcast.', 'error');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = origText;
+    }
+}
+
+async function deleteBroadcastAjax(e, id) {
+    e.preventDefault();
+    try {
+        let res = await fetch(`/messages/delete/${id}`, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        let data = await res.json();
+        if (data.ok) {
+            handleLiveActivityEvent({ action: 'message_deleted', id: id });
+            if (liveChannel) liveChannel.postMessage({ action: 'message_deleted', id: id });
+            showLiveToast('🗑️ Broadcast removed.', 'info');
+        } else {
+            showLiveToast('❌ ' + (data.error || 'Failed to delete'), 'error');
+        }
+    } catch(err) {
+        console.error(err);
+    }
+}
+
+async function handleSecureMessageSubmit(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const form = e.target || document.getElementById('secureMsgForm');
+    const submitBtn = form.querySelector('button[type="submit"]') || form.querySelector('button');
+    const origText = submitBtn ? submitBtn.textContent : '';
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Sending...'; }
+    try {
+        const formData = new FormData(form);
+        let res = await fetch('/message/send', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
+        });
+        let data = await res.json();
+        if (data.ok && data.message_data) {
+            const bodyField = form.querySelector('textarea[name="body"]');
+            if (bodyField) bodyField.value = '';
+            handleLiveActivityEvent({ action: 'confidential_message', message: data.message_data });
+            if (liveChannel) liveChannel.postMessage({ action: 'confidential_message', message: data.message_data });
+            if (typeof showLiveToast === 'function') {
+                showLiveToast('🔒 ' + data.message, 'success');
+            }
+        } else {
+            if (typeof showLiveToast === 'function') {
+                showLiveToast('❌ ' + (data.error || 'Failed to send message'), 'error');
+            }
+        }
+    } catch(err) {
+        console.error('Error sending message:', err);
+        if (typeof showLiveToast === 'function') {
+            showLiveToast('❌ Network error sending message.', 'error');
+        }
+    } finally {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = origText; }
+    }
+}
+
+async function markMessageReadAjax(e, id) {
+    e.preventDefault();
+    try {
+        let res = await fetch(`/messages/read/${id}`, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        let data = await res.json();
+        if (data.ok) {
+            handleLiveActivityEvent({ action: 'message_read', id: id, receiver_id: currentUserId, unread: data.unread });
+            if (liveChannel) liveChannel.postMessage({ action: 'message_read', id: id, receiver_id: currentUserId, unread: data.unread });
+            showLiveToast('✔ Message marked as read.', 'info');
+        }
+    } catch(err) {
+        console.error(err);
+    }
+}
+
+async function deleteConversationAjax(e, u1, u2) {
+    e.preventDefault();
+    try {
+        let res = await fetch(`/conversation/delete/${encodeURIComponent(u1)}/${encodeURIComponent(u2)}`, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        let data = await res.json();
+        if (data.ok) {
+            handleLiveActivityEvent({ action: 'conversation_deleted', u1: u1, u2: u2 });
+            if (liveChannel) liveChannel.postMessage({ action: 'conversation_deleted', u1: u1, u2: u2 });
+            showLiveToast('🗑️ Conversation deleted.', 'info');
+        } else {
+            showLiveToast('❌ ' + (data.error || 'Failed to delete'), 'error');
+        }
+    } catch(err) {
+        console.error(err);
+    }
+}
+
+async function resolveIssueManagerAjax(e, issueId) {
+    e.preventDefault();
+    try {
+        let res = await fetch(`/issue/${issueId}/resolve`, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        let data = await res.json();
+        if (data.ok) {
+            handleLiveActivityEvent({ action: 'issue_resolved', issue_id: issueId, resolved_by: currentUserId, stats: data.stats });
+            if (liveChannel) liveChannel.postMessage({ action: 'issue_resolved', issue_id: issueId, resolved_by: currentUserId, stats: data.stats });
+            showLiveToast('✔ Issue marked as resolved.', 'success');
+        } else {
+            showLiveToast('❌ ' + (data.error || 'Failed to resolve'), 'error');
+        }
+    } catch(err) {
+        console.error(err);
+    }
+}
+
+async function handleIssueCommentSubmit(e, issueId) {
+    e.preventDefault();
+    const form = e.target;
+    const input = form.querySelector('input[name="body"]');
+    const body = input ? input.value.trim() : '';
+    if (!body) return;
+    try {
+        const formData = new FormData();
+        formData.append('body', body);
+        let res = await fetch(`/issue/${issueId}/comment`, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
+        });
+        let data = await res.json();
+        if (data.ok && data.comment) {
+            input.value = '';
+            handleLiveActivityEvent({ action: 'issue_commented', issue_id: issueId, comment: data.comment });
+            if (liveChannel) liveChannel.postMessage({ action: 'issue_commented', issue_id: issueId, comment: data.comment });
+            showLiveToast('💬 Comment posted.', 'info');
+        } else {
+            showLiveToast('❌ ' + (data.error || 'Failed to post comment'), 'error');
+        }
+    } catch(err) {
+        console.error(err);
+    }
+}
+
+// ----------------------------------------------------
+// Stable Secure Recipient Dropdown Sync
+// ----------------------------------------------------
+function syncReceiverDropdown(activeUsers, offlineUsers) {
+    const receiverSelect = document.getElementById('secureReceiverSelect');
+    if (!receiverSelect) return;
+    if (document.activeElement === receiverSelect || receiverSelect.matches(':focus')) {
+        return; // Never overwrite options while user is clicking/viewing the select!
+    }
+
+    let optActive = document.getElementById('optgroup_active');
+    let optOffline = document.getElementById('optgroup_offline');
+    if (!optActive) {
+        optActive = document.createElement('optgroup');
+        optActive.id = 'optgroup_active';
+        optActive.label = '🟢 Logged In & Working (Active)';
+        receiverSelect.appendChild(optActive);
+    }
+    if (!optOffline) {
+        optOffline = document.createElement('optgroup');
+        optOffline.id = 'optgroup_offline';
+        optOffline.label = '⚪ Logged Out (Offline)';
+        receiverSelect.appendChild(optOffline);
+    }
+
+    const curVal = receiverSelect.value;
+    const newActiveHtml = (activeUsers || [])
+        .filter(u => u.user_id !== currentUserId)
+        .map(u => `<option value="${escapeHtml(u.user_id)}">🟢 ${escapeHtml(u.name)} (${escapeHtml(u.role.charAt(0).toUpperCase() + u.role.slice(1))})</option>`)
+        .join('');
+
+    const newOfflineHtml = (offlineUsers || [])
+        .filter(u => u.user_id !== currentUserId)
+        .map(u => `<option value="${escapeHtml(u.user_id)}">⚪ ${escapeHtml(u.name)} (${escapeHtml(u.role.charAt(0).toUpperCase() + u.role.slice(1))})</option>`)
+        .join('');
+
+    if (optActive.innerHTML !== newActiveHtml) optActive.innerHTML = newActiveHtml;
+    if (optOffline.innerHTML !== newOfflineHtml) optOffline.innerHTML = newOfflineHtml;
+    if (curVal) receiverSelect.value = curVal;
+}
+
+// ----------------------------------------------------
+// Real-Time Direct SSE Stream & Instant BroadcastChannel
+// ----------------------------------------------------
+let liveEventSource = null;
+let reconnectTimer = null;
+
+function updateLiveStatusBadge(isConnected) {
+    const statusText = document.getElementById('manager_live_status_text');
+    const badge = document.getElementById('manager_live_status_badge');
+    if (statusText) {
+        statusText.textContent = isConnected ? '● LIVE REAL-TIME (0ms)' : '● CONNECTING...';
+    }
+    if (badge) {
+        if (isConnected) {
+            badge.style.background = 'rgba(16,185,129,0.15)';
+            badge.style.color = '#34d399';
+            badge.style.borderColor = 'rgba(16,185,129,0.3)';
+        } else {
+            badge.style.background = 'rgba(245,158,11,0.15)';
+            badge.style.color = '#fbbf24';
+            badge.style.borderColor = 'rgba(245,158,11,0.3)';
+        }
+    }
+}
+
+function connectSSE() {
+    if (liveEventSource && liveEventSource.readyState !== EventSource.CLOSED) {
+        return;
+    }
+    if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+    }
+
+    try {
+        liveEventSource = new EventSource('/api/live_activity/stream');
+
+        liveEventSource.addEventListener('connected', () => {
+            updateLiveStatusBadge(true);
+        });
+
+        liveEventSource.addEventListener('activity', (e) => {
+            try {
+                const data = JSON.parse(e.data);
+                handleLiveActivityEvent(data);
+            } catch(err) {
+                console.error('SSE data parse error:', err);
+            }
+        });
+
+        liveEventSource.onerror = () => {
+            updateLiveStatusBadge(false);
+            if (liveEventSource) {
+                try { liveEventSource.close(); } catch(e) {}
+                liveEventSource = null;
+            }
+            if (!reconnectTimer) {
+                reconnectTimer = setTimeout(connectSSE, 1000);
+            }
+        };
+    } catch(e) {
+        if (!reconnectTimer) {
+            reconnectTimer = setTimeout(connectSSE, 1500);
+        }
+    }
+}
+
+// Peer-to-peer BroadcastChannel listener (instant 0ms local relay)
+if (liveChannel) {
+    liveChannel.onmessage = (e) => {
+        if (!e.data) return;
+        if (e.data.type === 'sse_stream_relay' && e.data.data) {
+            handleLiveActivityEvent(e.data.data);
+        } else {
+            handleLiveActivityEvent(e.data);
+        }
+    };
+}
+
+// Connect immediately on load
+connectSSE();
+
+// ----------------------------------------------------
+// Resilient Polling (Safety net & Active Users update)
+// ----------------------------------------------------
+async function poll() {
+    try {
+        let r = await fetch('/api/dashboard', { cache: 'no-store' });
+        let d = await r.json();
+        if(d.logged_in) {
+            document.getElementById('tin').textContent = d.total_in;
+            document.getElementById('tout').textContent = d.total_out;
+            document.getElementById('issues').textContent = d.open_issues;
+            document.getElementById('unread').textContent = d.unread;
+            let empEl = document.getElementById('active_emp');
+            if (empEl) empEl.textContent = d.employees;
+
+            // Real-Time Activity Stream Update (Fallback)
+            let mgrTbody = document.getElementById('manager_activity_tbody');
+            if (mgrTbody && d.recent_movements) {
+                let curMovJson = JSON.stringify(d.recent_movements);
+                if (curMovJson !== prevMovementsJson) {
+                    mgrTbody.innerHTML = renderManagerMovementRows(d.recent_movements, isInitialMovementLoad);
+                    if (d.recent_movements.length > 0) {
+                        const maxId = Math.max(...d.recent_movements.map(m => m.id));
+                        if (maxId > highestSeenMovementId) {
+                            highestSeenMovementId = maxId;
+                        }
+                    }
+                    prevMovementsJson = curMovJson;
+                    isInitialMovementLoad = false;
+                    updateManagerLiveCount();
+                }
+            }
+
+            // Real-Time Employee Performance Update
+            let empPerfTbody = document.getElementById('employee_perf_tbody');
+            if (empPerfTbody && d.employee_perf) {
+                let curEmpPerfJson = JSON.stringify(d.employee_perf);
+                if (curEmpPerfJson !== prevEmpPerfJson) {
+                    empPerfTbody.innerHTML = renderEmployeePerformanceRows(d.employee_perf);
+                    prevEmpPerfJson = curEmpPerfJson;
+                }
+            }
+
+            // Sync secure messaging recipient dropdown
+            if (d.active_users && d.offline_users) {
+                syncReceiverDropdown(d.active_users, d.offline_users);
+            }
+        }
+    } catch(e) {}
+}
+
+setInterval(poll, 2500);
+window.addEventListener('focus', () => { connectSSE(); poll(); });
+document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') {
+        connectSSE();
+        poll();
+    }
+});
+</script>
+{% endblock %}

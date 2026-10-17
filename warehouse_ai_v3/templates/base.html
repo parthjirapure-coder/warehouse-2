@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>{% block title %}Warehouse Management{% endblock %}</title>
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#1e1b4b">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-grad-1: #0f172a;
+            --bg-grad-2: #1e293b;
+            --glass-bg: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --primary: #3b82f6;
+            --primary-hover: #2563eb;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --purple: #8b5cf6;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, var(--bg-grad-1), var(--bg-grad-2));
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Glassmorphism utility */
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        header {
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--glass-border);
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .brand {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .brand span {
+            color: var(--primary);
+            text-shadow: 0 0 15px rgba(59, 130, 246, 0.5);
+        }
+
+        .user-nav {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .role-badge {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: #60a5fa;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-logout {
+            background: rgba(239, 68, 68, 0.1);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-logout:hover {
+            background: var(--danger);
+            color: white;
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+        }
+
+        main {
+            flex: 1;
+            padding: 40px;
+            max-width: 1600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        h1, h2, h3 {
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            margin-bottom: 30px;
+            font-size: 15px;
+        }
+
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+
+        .alert {
+            padding: 16px 20px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideIn 0.3s ease-out;
+            font-weight: 500;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .alert-success { background: rgba(16, 185, 129, 0.1); border-left: 4px solid var(--success); color: #34d399; }
+        .alert-error { background: rgba(239, 68, 68, 0.1); border-left: 4px solid var(--danger); color: #f87171; }
+
+        /* Forms & Inputs */
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-muted);
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--glass-border);
+            color: var(--text-main);
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 15px;
+            margin-bottom: 16px;
+            transition: all 0.3s;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        }
+
+        select option {
+            background-color: #0f172a;
+            color: #f1f5f9;
+        }
+
+        button, .btn {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+            text-align: center;
+        }
+
+        button:hover, .btn:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-success { background: var(--success); }
+        .btn-success:hover { background: #059669; box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4); }
+        
+        .btn-danger { background: var(--danger); }
+        .btn-danger:hover { background: #dc2626; box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4); }
+
+        .btn-purple { background: var(--purple); }
+        .btn-purple:hover { background: #7c3aed; box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4); }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            padding: 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        th {
+            color: var(--text-muted);
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .status-badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .status-Pending { background: rgba(245, 158, 11, 0.1); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+        .status-Verified { background: rgba(16, 185, 129, 0.1); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+        .status-Flagged { background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .status-Deleted { background: rgba(239, 68, 68, 0.15) !important; color: #f87171 !important; border: 1px dashed rgba(239, 68, 68, 0.5) !important; font-weight: 600; }
+        .movement-row-deleted { background: rgba(239, 68, 68, 0.07) !important; border-left: 3px solid #ef4444 !important; opacity: 0.92; }
+        .movement-row-deleted:hover { background: rgba(239, 68, 68, 0.13) !important; }
+        @keyframes rowDeletedPulse { 0% { background: rgba(239, 68, 68, 0.45); } 100% { background: rgba(239, 68, 68, 0.07); } }
+        .row-deleted-pulsed { animation: rowDeletedPulse 1.2s ease-out; }
+
+        /* Common layout helpers */
+        .grid-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 24px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::after {
+            content: '';
+            position: absolute;
+            top: 0; right: 0;
+            width: 100px; height: 100px;
+            background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+            border-radius: 50%;
+            transform: translate(30%, -30%);
+        }
+
+        .stat-label { color: var(--text-muted); font-size: 14px; font-weight: 600; letter-spacing: 1px; }
+        .stat-value { font-size: 42px; font-weight: 700; margin-top: 12px; color: white; }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+        }
+
+        @media (max-width: 1100px) {
+            .dashboard-grid { grid-template-columns: 1fr; }
+        }
+
+        .panel {
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--glass-border);
+            padding-bottom: 12px;
+        }
+
+        .message-box {
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            margin-bottom: 12px;
+            border-left: 4px solid var(--primary);
+        }
+
+        .message-common {
+            border-left-color: var(--purple);
+            background: linear-gradient(90deg, rgba(139, 92, 246, 0.1) 0%, transparent 100%);
+        }
+
+        .msg-meta {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .msg-title {
+            font-weight: 600;
+            font-size: 15px;
+            margin-bottom: 4px;
+            color: white;
+        }
+
+        .msg-body {
+            font-size: 14px;
+            line-height: 1.5;
+            color: #cbd5e1;
+        }
+
+        .common-terminal {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid var(--purple);
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.15);
+        }
+        
+        .terminal-header {
+            color: #c4b5fd;
+            font-family: monospace;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .terminal-header::before {
+            content: '>';
+            color: var(--success);
+            font-weight: bold;
+        }
+
+        @keyframes livePulseGlow {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { transform: scale(1.15); box-shadow: 0 0 0 7px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+        .live-pulse-dot {
+            display: inline-block;
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: #10b981;
+            margin-right: 6px;
+            vertical-align: middle;
+            animation: livePulseGlow 1.8s infinite;
+        }
+
+        @keyframes highlightNewMovement {
+            0% { background: rgba(16, 185, 129, 0.45); transform: translateY(-4px); }
+            50% { background: rgba(16, 185, 129, 0.2); }
+            100% { background: transparent; transform: translateY(0); }
+        }
+        .row-highlight-new {
+            animation: highlightNewMovement 2.5s ease-out;
+        }
+        .row-fade-out {
+            transition: all 0.35s ease;
+            opacity: 0 !important;
+            transform: translateX(-30px) !important;
+        }
+        .row-status-pulsed {
+            animation: pulseStatusBadge 1.2s ease-out;
+        }
+        @keyframes pulseStatusBadge {
+            0% { transform: scale(1.25); filter: brightness(1.5); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); filter: brightness(1); }
+        }
+        @keyframes highlightNewItem {
+            0% { background: rgba(139, 92, 246, 0.4); transform: translateY(-4px); }
+            50% { background: rgba(139, 92, 246, 0.15); }
+            100% { background: transparent; transform: translateY(0); }
+        }
+        .item-highlight-new {
+            animation: highlightNewItem 2.5s ease-out;
+        }
+        @keyframes highlightNewDanger {
+            0% { background: rgba(239, 68, 68, 0.35); transform: translateY(-4px); }
+            50% { background: rgba(239, 68, 68, 0.15); }
+            100% { background: transparent; transform: translateY(0); }
+        }
+        .danger-highlight-new {
+            animation: highlightNewDanger 2.5s ease-out;
+        }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div id="toast-container" style="position: fixed; top: 20px; right: 20px; z-index: 999999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; max-width: 380px; width: calc(100% - 40px);"></div>
+    {% if session.get('user_id') %}
+    <header>
+        <div class="brand">Warehouse <span>Management</span></div>
+        <div class="user-nav">
+            <button class="btn btn-primary" onclick="openScanner()" style="padding: 6px 12px; font-size: 13px;">📷 Quick Scan</button>
+            <span style="font-weight: 500;">{{ user.name }}</span>
+            <span class="role-badge">{{ user.role }}</span>
+            <a href="/logout" class="btn-logout">Logout</a>
+        </div>
+    </header>
+    {% endif %}
+
+    <script>
+        function escapeHtml(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function showLiveToast(message, type = 'info', duration = 3500) {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            const toast = document.createElement('div');
+            toast.className = 'live-toast live-toast-' + type;
+            toast.style.cssText = `
+            toast.style.cssText = `
+                pointer-events: auto;
+                padding: 12px 18px;
+                border-radius: 10px;
+                background: rgba(15, 23, 42, 0.95);
+                backdrop-filter: blur(12px);
+                color: #f8fafc;
+                font-size: 13px;
+                font-weight: 500;
+                box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+                border: 1px solid rgba(255,255,255,0.12);
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                opacity: 0;
+                transform: translateX(40px);
+                transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            `;
+            if (type === 'success') {
+                toast.style.borderColor = 'rgba(16, 185, 129, 0.6)';
+                toast.style.boxShadow = '0 10px 25px rgba(16, 185, 129, 0.25)';
+            } else if (type === 'activity' || type === 'live') {
+                toast.style.borderColor = 'rgba(56, 189, 248, 0.6)';
+                toast.style.boxShadow = '0 10px 25px rgba(56, 189, 248, 0.25)';
+            } else if (type === 'warning') {
+                toast.style.borderColor = 'rgba(245, 158, 11, 0.6)';
+                toast.style.boxShadow = '0 10px 25px rgba(245, 158, 11, 0.25)';
+            } else if (type === 'error') {
+                toast.style.borderColor = 'rgba(239, 68, 68, 0.6)';
+                toast.style.boxShadow = '0 10px 25px rgba(239, 68, 68, 0.25)';
+            }
+            toast.innerHTML = message;
+            container.appendChild(toast);
+            requestAnimationFrame(() => {
+                toast.style.opacity = '1';
+                toast.style.transform = 'translateX(0)';
+            });
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateX(40px)';
+                setTimeout(() => toast.remove(), 350);
+            }, duration);
+        }
+
+        function quickMessage(userId) {
+            let form = document.getElementById("secureMsgForm");
+            if(form) {
+                let sel = form.querySelector("select[name='receiver_id']");
+                if (sel) sel.value = userId;
+                let body = form.querySelector("textarea[name='body']");
+                if (body) body.focus();
+                form.scrollIntoView({behavior: "smooth", block: "center"});
+            } else {
+                showLiveToast("⚠️ Please go to your dashboard to send a message.", "warning");
+            }
+        }
+
+        function replyTo(senderId) {
+            quickMessage(senderId);
+        }
+    </script>
+
+    <main>
+        <div class="flash-messages">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'success' if category == 'success' else 'error' }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+        
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- Global QR Scanner Modal -->
+    <div id="qrScannerModal" style="display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.8); align-items: center; justify-content: center;">
+        <div style="background: #1e1b4b; padding: 20px; border-radius: 12px; width: 90%; max-width: 400px; border: 1px solid rgba(139,92,246,0.3);">
+            <h3 style="margin-top: 0; display: flex; justify-content: space-between; align-items: center; color: white;">
+                Scan Item
+                <div>
+                    <button class="btn btn-secondary" onclick="flipCamera()" style="padding: 4px 8px; font-size: 12px; margin-right: 10px;">Flip Camera</button>
+                    <span style="cursor: pointer; color: #f87171;" onclick="closeScanner()">✖</span>
+                </div>
+            </h3>
+            <div id="reader" style="width: 100%; background: white;"></div>
+        </div>
+    </div>
+    
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <script>
+        let html5QrCode;
+        let currentFacingMode = "environment";
+        let isScanning = false;
+
+        function startScanner(facingMode) {
+            html5QrCode.start(
+                { facingMode: facingMode },
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                onScanSuccess,
+                onScanFailure
+            ).then(() => {
+                isScanning = true;
+            }).catch(err => {
+                console.error("Scanner failed to start", err);
+            });
+        }
+
+        function openScanner() {
+            if (typeof Html5Qrcode === 'undefined') {
+                showLiveToast("⚠️ QR Scanner library is loading or offline.", "warning");
+                return;
+            }
+            document.getElementById('qrScannerModal').style.display = 'flex';
+            if (!html5QrCode) {
+                html5QrCode = new Html5Qrcode("reader");
+            }
+            startScanner(currentFacingMode);
+        }
+
+        function flipCamera() {
+            if (html5QrCode && isScanning) {
+                html5QrCode.stop().then(() => {
+                    isScanning = false;
+                    currentFacingMode = currentFacingMode === "environment" ? "user" : "environment";
+                    startScanner(currentFacingMode);
+                }).catch(err => {
+                    console.error("Failed to stop scanner before flipping.", err);
+                });
+            }
+        }
+        
+        function closeScanner() {
+            if (html5QrCode && isScanning) {
+                html5QrCode.stop().then(() => {
+                    isScanning = false;
+                    html5QrCode.clear();
+                }).catch(error => {
+                    console.error("Failed to stop html5QrCode. ", error);
+                });
+            }
+            document.getElementById('qrScannerModal').style.display = 'none';
+        }
+
+        function onScanSuccess(decodedText, decodedResult) {
+            closeScanner();
+            if (decodedText.includes("/qr/")) {
+                let redirectUrl = decodedText;
+                if (redirectUrl.startsWith("http://127.0.0.1:5000")) {
+                    redirectUrl = redirectUrl.replace("http://127.0.0.1:5000", window.location.origin);
+                }
+                window.location.href = redirectUrl;
+                return;
+            }
+            let inputs = document.querySelectorAll("input[name='item']");
+            if (inputs.length > 0) {
+                inputs[0].value = decodedText;
+                let qtys = document.querySelectorAll("input[name='quantity']");
+                if (qtys.length > 0) qtys[0].focus();
+            } else {
+                showLiveToast("📷 Scanned QR Code: " + escapeHtml(decodedText), "info");
+            }
+        }
+
+        function onScanFailure(error) {}
+    </script>
+
+    <!-- Edit User Modal -->
+    <div id="editUserModal" style="display: none; position: fixed; inset: 0; z-index: 99999; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: 20px;">
+        <div class="glass panel" style="width: 100%; max-width: 440px; background: #0f172a; border: 1px solid rgba(139, 92, 246, 0.5); box-shadow: 0 25px 60px rgba(0,0,0,0.7); padding: 24px; border-radius: 16px; position: relative;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--glass-border); padding-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 22px;">✏️</span>
+                    <div>
+                        <h3 style="margin: 0; font-size: 18px; font-weight: 700; color: #f8fafc;">Edit User Credentials</h3>
+                        <p style="margin: 0; font-size: 12px; color: var(--text-muted);">Change name and reset password</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeEditUserModal()" style="background: transparent; border: none; color: var(--text-muted); font-size: 24px; cursor: pointer; padding: 2px 8px; line-height: 1;">&times;</button>
+            </div>
+
+            <form id="editUserForm" method="post" action="">
+                <input type="hidden" id="editUserIdHidden" name="user_db_id" value="">
+                
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; font-size: 12px; font-weight: 600; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">User ID</label>
+                    <input type="text" id="editUserUid" readonly style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: #cbd5e1; padding: 10px 14px; border-radius: 8px; font-family: monospace; font-size: 14px; cursor: not-allowed;">
+                </div>
+
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; font-size: 12px; font-weight: 600; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Full Name</label>
+                    <input type="text" id="editUserName" name="name" required style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(139, 92, 246, 0.4); color: #fff; padding: 10px 14px; border-radius: 8px; font-size: 14px; outline: none;">
+                </div>
+
+                <div style="margin-bottom: 14px;">
+                    <label style="display: block; font-size: 12px; font-weight: 600; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+                        New Password
+                        <span style="color: #64748b; font-weight: 400; text-transform: none;">(leave blank to keep current)</span>
+                    </label>
+                    <div style="position: relative;">
+                        <input type="password" id="editUserPassword" name="password" placeholder="Enter new password" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(139, 92, 246, 0.4); color: #fff; padding: 10px 42px 10px 14px; border-radius: 8px; font-size: 14px; outline: none;">
+                        <button type="button" onclick="toggleEditPasswordVisibility()" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: transparent; border: none; color: #94a3b8; cursor: pointer; font-size: 16px;" title="Show/Hide Password">👁️</button>
+                    </div>
+                </div>
+
+                {% if user and user.role == 'supervisor' %}
+                <div style="margin-bottom: 20px;" id="roleSelectGroup">
+                    <label style="display: block; font-size: 12px; font-weight: 600; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Role</label>
+                    <select id="editUserRole" name="role" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #fff; padding: 10px 14px; border-radius: 8px; font-size: 14px;">
+                        <option value="employee">Employee</option>
+                        <option value="manager">Manager</option>
+                        <option value="supervisor">Supervisor</option>
+                    </select>
+                </div>
+                {% endif %}
+
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                    <button type="button" onclick="closeEditUserModal()" class="btn" style="background: rgba(255,255,255,0.08); color: #cbd5e1; padding: 10px 18px;">Cancel</button>
+                    <button type="submit" class="btn btn-primary" style="background: #8b5cf6; padding: 10px 20px; font-weight: 600;">💾 Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function openEditUserModal(id, uid, name, role) {
+            // Support passing element with dataset or direct parameters
+            if (id && typeof id === 'object' && id.dataset) {
+                const el = id;
+                id = el.dataset.id;
+                uid = el.dataset.uid;
+                name = el.dataset.name || '';
+                try {
+                    if (name.includes('%')) name = decodeURIComponent(name);
+                } catch(e) {}
+                role = el.dataset.role;
+            }
+            const modal = document.getElementById('editUserModal');
+            if (!modal) return;
+            document.getElementById('editUserIdHidden').value = id;
+            document.getElementById('editUserUid').value = uid;
+            document.getElementById('editUserName').value = name || '';
+            document.getElementById('editUserPassword').value = '';
+            const form = document.getElementById('editUserForm');
+            form.action = '/users/' + id + '/edit';
+            
+            const roleSelect = document.getElementById('editUserRole');
+            if (roleSelect && role) {
+                roleSelect.value = role;
+            }
+            const roleGroup = document.getElementById('roleSelectGroup');
+            if (roleGroup) {
+                roleGroup.style.display = (uid === 'SUP001') ? 'none' : 'block';
+            }
+            modal.style.display = 'flex';
+        }
+
+        function closeEditUserModal() {
+            const modal = document.getElementById('editUserModal');
+            if (modal) modal.style.display = 'none';
+        }
+
+        function toggleEditPasswordVisibility() {
+            const pwdInput = document.getElementById('editUserPassword');
+            if (pwdInput) {
+                pwdInput.type = pwdInput.type === 'password' ? 'text' : 'password';
+            }
+        }
+
+        window.addEventListener('click', function(e) {
+            const modal = document.getElementById('editUserModal');
+            if (modal && e.target === modal) {
+                closeEditUserModal();
+            }
+        });
+
+        window.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeEditUserModal();
+        });
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/static/sw.js').then(function(registration) {
+                    console.log('ServiceWorker registration successful');
+                }, function(err) {
+                    console.log('ServiceWorker registration failed: ', err);
+                });
+            });
+        }
+    </script>
+
+    {% if session.get('user_id') %}
+    <script>
+    (function() {
+        // Multi-tab safe Real-Time Presence Heartbeat & Offline Beacon
+        const uid = '{{ session.get("user_id") }}';
+        const TAB_STORAGE_KEY = 'wh_active_tabs_' + uid;
+        const tabId = 'tab_' + Math.random().toString(36).substring(2, 9);
+        let heartbeatTimer = null;
+
+        function getActiveTabs() {
+            try {
+                let tabs = JSON.parse(localStorage.getItem(TAB_STORAGE_KEY) || '{}');
+                let now = Date.now();
+                for (let tid in tabs) {
+                    if (now - tabs[tid] > 8000) delete tabs[tid];
+                }
+                return tabs;
+            } catch(e) { return {}; }
+        }
+
+        function registerTabPresence() {
+            let tabs = getActiveTabs();
+            tabs[tabId] = Date.now();
+            try { localStorage.setItem(TAB_STORAGE_KEY, JSON.stringify(tabs)); } catch(e) {}
+        }
+
+        async function sendPresencePing() {
+            registerTabPresence();
+            try {
+                await fetch('/api/presence/ping', { method: 'POST', cache: 'no-store' });
+            } catch(e) {}
+        }
+
+        function handleTabClose() {
+            let tabs = getActiveTabs();
+            delete tabs[tabId];
+            try { localStorage.setItem(TAB_STORAGE_KEY, JSON.stringify(tabs)); } catch(e) {}
+            // Send instant offline beacon if no other tabs remain open for this user
+            if (Object.keys(tabs).length === 0) {
+                if (navigator.sendBeacon) {
+                    navigator.sendBeacon('/api/presence/offline');
+                } else {
+                    fetch('/api/presence/offline', { method: 'POST', keepalive: true }).catch(() => {});
+                }
+            }
+        }
+
+        // Initialize heartbeat (every 4s; server timeout is 12s)
+        sendPresencePing();
+        heartbeatTimer = setInterval(sendPresencePing, 4000);
+
+        // Instant ping on user tab activation
+        window.addEventListener('focus', sendPresencePing);
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'visible') {
+                sendPresencePing();
+            }
+        });
+
+        window.addEventListener('pagehide', function() {
+            let tabs = getActiveTabs();
+            delete tabs[tabId];
+            try { localStorage.setItem(TAB_STORAGE_KEY, JSON.stringify(tabs)); } catch(e) {}
+        });
+    })();
+    </script>
+    {% endif %}
+</body>
+</html>
