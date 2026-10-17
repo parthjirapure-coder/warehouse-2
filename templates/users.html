@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+{% block title %}Manage Users - Warehouse Management{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px;">
+    <div>
+        <a href="/supervisor" style="color: var(--primary); text-decoration: none; font-size: 14px; font-weight: 500;">← Back to Dashboard</a>
+        <h1 style="margin-top: 8px;">User Administration</h1>
+        <p class="subtitle">Live presence tracking, role credentials, and QR code management.</p>
+    </div>
+    <div style="display: flex; gap: 12px; align-items: center;">
+        <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); padding: 8px 16px; border-radius: 12px; font-size: 13px;">
+            Working: <strong style="color: #34d399;" id="active_count_display">{{ active_count }} Online</strong> &nbsp;|&nbsp; 
+            Logged Out: <strong style="color: var(--text-muted);" id="offline_count_display">{{ offline_count }} Offline</strong>
+        </div>
+        <a href="/users/create" class="btn btn-primary">➕ Create New User</a>
+    </div>
+</div>
+
+<div class="glass panel">
+    <table>
+        <tr>
+            <th>Role</th>
+            <th>Name</th>
+            <th>User ID</th>
+            <th>Work Status</th>
+            <th>Account</th>
+            <th>QR Code</th>
+            {% if user.role == 'supervisor' %}
+            <th>Actions</th>
+            {% endif %}
+        </tr>
+        {% for u in users %}
+        <tr>
+            <td>
+                <span class="role-badge" style="
+                    {% if u.role == 'supervisor' %} border-color: var(--purple); color: var(--purple); background: rgba(139,92,246,0.1);
+                    {% elif u.role == 'manager' %} border-color: var(--warning); color: var(--warning); background: rgba(245,158,11,0.1);
+                    {% endif %}
+                ">
+                    {{ u.role }}
+                </span>
+            </td>
+            <td><b>{{ u.name }}</b></td>
+            <td style="font-family: monospace; color: var(--text-muted);">{{ u.user_id }}</td>
+            <td id="user_status_{{ u.user_id }}">
+                {% if u.is_online %}
+                <span style="color: var(--success); font-weight: bold; display: inline-flex; align-items: center; gap: 6px;">
+                    <span class="live-pulse-dot" style="width: 8px; height: 8px; margin-right: 0;"></span>
+                    Active (Working)
+                </span>
+                {% else %}
+                <span style="color: var(--text-muted); display: inline-flex; align-items: center; gap: 6px;">
+                    <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #64748b;"></span>
+                    Logged Out
+                </span>
+                {% endif %}
+            </td>
+            <td>
+                {% if u.active %}
+                <span style="color: #60a5fa; font-weight: 500; font-size: 13px;">Enabled</span>
+                {% else %}
+                <span style="color: var(--danger); font-weight: 500; font-size: 13px;">Disabled</span>
+                {% endif %}
+            </td>
+            <td>
+                <a href="{{ url_for('static', filename='qrcodes/' + u.user_id + '.png') }}" target="_blank" style="color: var(--primary); text-decoration: none;">View QR</a>
+            </td>
+            {% if user.role == 'supervisor' %}
+            <td>
+                <div style="display: flex; gap: 8px;">
+                    <button type="button" data-id="{{ u.id }}" data-uid="{{ u.user_id }}" data-name="{{ u.name }}" data-role="{{ u.role }}" onclick="openEditUserModal(this)" class="btn" style="padding: 6px 12px; font-size: 13px; background: rgba(139, 92, 246, 0.2); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, 0.4);" title="Edit Name & Password">✏️ Edit</button>
+                    <form method="post" action="/users/{{ u.id }}/toggle">
+                        <button style="padding: 6px 12px; font-size: 13px; background: rgba(255,255,255,0.1);" title="Toggle Active">
+                            {% if u.active %}Disable{% else %}Enable{% endif %}
+                        </button>
+                    </form>
+                    <form method="post" action="/users/{{ u.id }}/delete">
+                        <button style="padding: 6px 12px; font-size: 13px; background: rgba(239,68,68,0.2); color: #f87171;" title="Delete">Del</button>
+                    </form>
+                    <a href="/users/{{ u.id }}/qr" class="btn btn-purple" style="padding: 6px 12px; font-size: 13px;">Regen QR</a>
+                </div>
+            </td>
+            {% endif %}
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+
+<script>
+async function pollUsersPresence() {
+    try {
+        let r = await fetch('/api/dashboard', { cache: 'no-store' });
+        let d = await r.json();
+        if (d.logged_in && d.active_users && d.offline_users) {
+            let actEl = document.getElementById('active_count_display');
+            let offEl = document.getElementById('offline_count_display');
+            if (actEl) actEl.textContent = d.active_users.length + ' Online';
+            if (offEl) offEl.textContent = d.offline_users.length + ' Offline';
+
+            d.active_users.forEach(u => {
+                let cell = document.getElementById('user_status_' + u.user_id);
+                if (cell) {
+                    cell.innerHTML = `
+                    <span style="color: var(--success); font-weight: bold; display: inline-flex; align-items: center; gap: 6px;">
+                        <span class="live-pulse-dot" style="width: 8px; height: 8px; margin-right: 0;"></span>
+                        Active (Working)
+                    </span>`;
+                }
+            });
+
+            d.offline_users.forEach(u => {
+                let cell = document.getElementById('user_status_' + u.user_id);
+                if (cell) {
+                    cell.innerHTML = `
+                    <span style="color: var(--text-muted); display: inline-flex; align-items: center; gap: 6px;">
+                        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #64748b;"></span>
+                        Logged Out
+                    </span>`;
+                }
+            });
+        }
+    } catch(e) {}
+}
+
+setInterval(pollUsersPresence, 2000);
+window.addEventListener('focus', pollUsersPresence);
+document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') pollUsersPresence();
+});
+</script>
+{% endblock %}

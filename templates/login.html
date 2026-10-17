@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}Login - Warehouse Management{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        justify-content: center;
+        align-items: center;
+    }
+    .login-container {
+        width: 100%;
+        max-width: 420px;
+        padding: 40px;
+        text-align: center;
+    }
+    .login-brand {
+        font-size: 32px;
+        font-weight: 700;
+        margin-bottom: 8px;
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+    }
+    .login-brand span {
+        color: var(--primary);
+        text-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
+    }
+    .login-sub {
+        color: var(--text-muted);
+        margin-bottom: 32px;
+        font-size: 15px;
+    }
+    form {
+        text-align: left;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="glass login-container" style="margin: auto;">
+    <div class="login-brand">Warehouse <span>Management</span></div>
+    <div class="login-sub">Next-Gen Warehouse Management System</div>
+    
+    <form method="post">
+        <label>User ID</label>
+        <input name="user_id" id="login_user_id" required autocomplete="off">
+        
+        <label>Password</label>
+        <input type="password" name="password" id="login_password" required>
+        
+        <button type="submit" style="width: 100%; margin-top: 10px;">Secure Login</button>
+    </form>
+</div>
+{% endblock %}

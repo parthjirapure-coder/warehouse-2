@@ -1,0 +1,1728 @@
+{% extends 'base.html' %}
+{% block title %}Employee - Warehouse Management{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+    <div>
+        <h1 style="margin: 0;">Employee Dashboard</h1>
+    </div>
+</div>
+
+
+<div class="dashboard-grid">
+    <div>
+        <div class="glass panel" style="border: 1px solid rgba(139, 92, 246, 0.3);">
+            <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <h2>📦 Log Item Movement</h2>
+                <div style="display: flex; gap: 6px; background: rgba(0,0,0,0.3); padding: 4px; border-radius: 10px; border: 1px solid var(--glass-border);">
+                    <button type="button" id="tab_manual_btn" onclick="switchMovementTab('manual')" class="btn" style="padding: 6px 14px; font-size: 12px; background: var(--primary); color: white; border-radius: 6px; font-weight: 500;">🤖 AI Movement Asker</button>
+                    <button type="button" id="tab_excel_btn" onclick="switchMovementTab('excel')" class="btn" style="padding: 6px 14px; font-size: 12px; background: transparent; color: var(--text-muted); border-radius: 6px; font-weight: 500;">📊 Excel / CSV Import</button>
+                </div>
+            </div>
+
+            <!-- TAB 1: AI Based Asker Movement Logger -->
+            <div id="movement_manual_pane">
+                <style>
+                    .ai-asker-container {
+                        background: rgba(15, 23, 42, 0.4);
+                        border: 1px solid rgba(139, 92, 246, 0.25);
+                        border-radius: 14px;
+                        padding: 16px;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 14px;
+                    }
+                    .ai-asker-header {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        flex-wrap: wrap;
+                        gap: 10px;
+                        padding-bottom: 10px;
+                        border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+                    }
+                    .ai-status-pill {
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 6px;
+                        background: rgba(139, 92, 246, 0.15);
+                        border: 1px solid rgba(139, 92, 246, 0.35);
+                        color: #c4b5fd;
+                        font-size: 11px;
+                        font-weight: 600;
+                        padding: 3px 10px;
+                        border-radius: 20px;
+                    }
+                    .ai-chat-thread {
+                        max-height: 380px;
+                        min-height: 220px;
+                        overflow-y: auto;
+                        display: flex;
+                        flex-direction: column;
+                        gap: 10px;
+                        padding: 10px 4px;
+                        scroll-behavior: smooth;
+                    }
+                    .ai-chat-thread::-webkit-scrollbar {
+                        width: 5px;
+                    }
+                    .ai-chat-thread::-webkit-scrollbar-thumb {
+                        background: rgba(139, 92, 246, 0.3);
+                        border-radius: 4px;
+                    }
+                    .ai-msg {
+                        display: flex;
+                        align-items: flex-start;
+                        gap: 8px;
+                        max-width: 90%;
+                        animation: fadeIn 0.25s ease-out;
+                    }
+                    .ai-msg.ai-msg-assistant {
+                        align-self: flex-start;
+                    }
+                    .ai-msg.ai-msg-user {
+                        align-self: flex-end;
+                        flex-direction: row-reverse;
+                    }
+                    .ai-msg-avatar {
+                        width: 28px;
+                        height: 28px;
+                        border-radius: 50%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 13px;
+                        flex-shrink: 0;
+                    }
+                    .ai-msg-assistant .ai-msg-avatar {
+                        background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+                        box-shadow: 0 0 10px rgba(139, 92, 246, 0.4);
+                    }
+                    .ai-msg-user .ai-msg-avatar {
+                        background: linear-gradient(135deg, #10b981, #059669);
+                    }
+                    .ai-bubble {
+                        padding: 9px 13px;
+                        border-radius: 14px;
+                        font-size: 13px;
+                        line-height: 1.45;
+                        word-break: break-word;
+                    }
+                    .ai-msg-assistant .ai-bubble {
+                        background: rgba(30, 41, 59, 0.85);
+                        border: 1px solid rgba(139, 92, 246, 0.3);
+                        color: #e2e8f0;
+                        border-top-left-radius: 3px;
+                    }
+                    .ai-msg-user .ai-bubble {
+                        background: linear-gradient(135deg, rgba(59, 130, 246, 0.35), rgba(139, 92, 246, 0.35));
+                        border: 1px solid rgba(99, 102, 241, 0.5);
+                        color: #ffffff;
+                        border-top-right-radius: 3px;
+                    }
+                    .ai-chips-strip {
+                        display: flex;
+                        gap: 6px;
+                        overflow-x: auto;
+                        padding-bottom: 4px;
+                        scrollbar-width: none;
+                    }
+                    .ai-chips-strip::-webkit-scrollbar {
+                        display: none;
+                    }
+                    .ai-chip-btn {
+                        white-space: nowrap;
+                        background: rgba(255, 255, 255, 0.05);
+                        border: 1px solid rgba(255, 255, 255, 0.12);
+                        color: #cbd5e1;
+                        padding: 4px 10px;
+                        border-radius: 16px;
+                        font-size: 11px;
+                        cursor: pointer;
+                        transition: all 0.2s ease;
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 4px;
+                    }
+                    .ai-chip-btn:hover {
+                        background: rgba(139, 92, 246, 0.25);
+                        border-color: #a78bfa;
+                        color: #ffffff;
+                        transform: translateY(-1px);
+                    }
+                    .ai-draft-card {
+                        background: rgba(15, 23, 42, 0.7);
+                        border: 1px solid rgba(139, 92, 246, 0.3);
+                        border-radius: 12px;
+                        padding: 12px 14px;
+                        transition: all 0.25s ease;
+                    }
+                    .ai-draft-card.ready-to-log {
+                        border-color: rgba(16, 185, 129, 0.5);
+                        background: rgba(16, 185, 129, 0.05);
+                        box-shadow: 0 0 15px rgba(16, 185, 129, 0.15);
+                    }
+                    .mic-btn-active {
+                        background: #ef4444 !important;
+                        color: white !important;
+                        animation: micPulse 1.2s infinite ease-in-out;
+                    }
+                    @keyframes micPulse {
+                        0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+                        70% { box-shadow: 0 0 0 9px rgba(239, 68, 68, 0); }
+                        100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+                    }
+                </style>
+
+                <div class="ai-asker-container">
+                    <!-- Top Bar with status & controls -->
+                    <div class="ai-asker-header">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="ai-status-pill">
+                                <span class="live-pulse-dot" style="width: 7px; height: 7px; margin: 0; background: #a78bfa;"></span>
+                                🤖 AI Movement Asker
+                            </span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <button type="button" class="btn" onclick="resetAiAskerChat()" style="padding: 4px 10px; font-size: 11px; background: rgba(255,255,255,0.06); border: 1px solid var(--glass-border); color: var(--text-muted);" title="Reset conversation">
+                                🔄 New Log
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Chat Conversation Thread -->
+                    <div id="aiAskerChatFlow" class="ai-chat-thread">
+                        <div class="ai-msg ai-msg-assistant">
+                            <div class="ai-msg-avatar">🤖</div>
+                            <div class="ai-bubble">
+                                👋 <b>Hello!</b> Give any prompt like <i>"add 70 sofa, 80 car, 90 wheel"</i> or <i>"dispatched 12 forklift batteries"</i>.<br>
+                                <span style="font-size: 12px; color: var(--text-muted);">The AI will <b>auto-confirm and add it by itself</b> (no button click needed), and ask you for any criteria that are left (Item, Qty, Direction, Notes / Bay / PO).</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Interactive Input Dock -->
+                    <form id="aiAskerForm" onsubmit="handleAiAskerSubmit(event)" style="display: flex; gap: 8px; align-items: center; margin: 0;">
+                        <input id="aiAskerInput" placeholder="Give prompt (e.g. add 70 sofa, 80 car, 90 wheel)..." autocomplete="off" style="flex: 1; padding: 10px 14px; font-size: 13px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid rgba(139, 92, 246, 0.3);">
+                        <button type="button" id="aiMicBtn" onclick="toggleAiVoiceDictation()" class="btn" style="padding: 10px 12px; font-size: 15px; background: rgba(255,255,255,0.06); border: 1px solid var(--glass-border); border-radius: 10px; color: #cbd5e1;" title="Speak with microphone">
+                            🎙️
+                        </button>
+                        <button type="submit" id="aiSendBtn" class="btn btn-purple" style="padding: 10px 18px; font-size: 13px; font-weight: 600; border-radius: 10px; display: flex; align-items: center; gap: 6px;">
+                            <span>Send</span> ➔
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- TAB 2: Excel / CSV File Extraction & Import -->
+            <div id="movement_excel_pane" style="display: none;">
+                <p style="color: var(--text-muted); font-size: 13px; margin: 0 0 14px 0;">Upload an Excel (.xlsx, .xls) or CSV file to extract and log multiple items automatically.</p>
+
+                <form id="excelMovementForm" method="post" action="/movement/import-excel" enctype="multipart/form-data" onsubmit="handleExcelImportSubmit(event)">
+                    <input type="hidden" name="extracted_json" id="extractedJsonInput" value="">
+                    
+                    <div id="excelDropzone" style="border: 2px dashed rgba(139, 92, 246, 0.4); background: rgba(139, 92, 246, 0.05); border-radius: 12px; padding: 26px 16px; text-align: center; cursor: pointer; transition: all 0.2s; margin-bottom: 16px;" onclick="document.getElementById('excelFileInput').click()">
+                        <div style="font-size: 34px; margin-bottom: 6px;">📑</div>
+                        <div style="font-weight: 600; font-size: 14px; color: #c4b5fd;" id="dropzoneText">Click to select or drag & drop Excel / CSV file here</div>
+                        <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">Supported columns: Item Name / SKU, Quantity, Movement Type (IN/OUT), Notes</div>
+                        <input type="file" id="excelFileInput" name="excel_file" accept=".xlsx, .xls, .csv" style="display: none;" onchange="handleExcelSelect(this.files)">
+                    </div>
+
+                    <div style="margin-bottom: 16px;">
+                        <label>Default Direction <span style="font-size: 11px; color: var(--text-muted);">(applied if row does not specify IN/OUT)</span></label>
+                        <select name="default_direction" id="excelDefaultDirection" onchange="if(currentParsedFile) parseSelectedFile(currentParsedFile);">
+                            <option value="IN">📥 INCOMING / RECEIVED</option>
+                            <option value="OUT">📤 OUTGOING / DISPATCHED</option>
+                        </select>
+                    </div>
+
+                    <!-- Extraction Live Preview Box -->
+                    <div id="excelPreviewBox" style="display: none; margin-bottom: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; margin-bottom: 10px;">
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span class="live-pulse-dot" style="width: 9px; height: 9px; margin-right: 0;"></span>
+                                <div>
+                                    <strong id="previewFileName" style="color: #34d399; font-size: 13px;">data.xlsx</strong>
+                                    <div id="previewStats" style="font-size: 12px; color: var(--text-muted);">0 items extracted</div>
+                                </div>
+                            </div>
+                            <button type="button" class="btn" style="padding: 4px 10px; font-size: 11px; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3);" onclick="clearExcelSelection()">✖ Cancel</button>
+                        </div>
+
+                        <div id="previewWarningBox" style="display: none; padding: 8px 12px; background: rgba(245, 158, 11, 0.1); border-left: 3px solid var(--warning); color: #fcd34d; font-size: 12px; border-radius: 6px; margin-bottom: 10px;"></div>
+
+                        <div style="max-height: 240px; overflow-y: auto; border: 1px solid var(--glass-border); border-radius: 8px; background: rgba(0,0,0,0.2);">
+                            <table style="width: 100%; font-size: 12px; margin: 0; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background: rgba(0,0,0,0.4); position: sticky; top: 0; z-index: 1;">
+                                        <th style="padding: 8px 10px; text-align: center; width: 40px;">#</th>
+                                        <th style="padding: 8px 10px; text-align: left;">Item Name / SKU</th>
+                                        <th style="padding: 8px 10px; text-align: center; width: 60px;">Qty</th>
+                                        <th style="padding: 8px 10px; text-align: center; width: 80px;">Type</th>
+                                        <th style="padding: 8px 10px; text-align: left;">Notes</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="previewTbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="submitExcelBtn" class="btn-success" style="width: 100%; display: none;">🚀 Confirm & Log Extracted Items</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="glass panel">
+            <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <h2 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                    <span class="live-pulse-dot" style="width: 8px; height: 8px; margin-right: 0;"></span> ⚡ My Recent Activity
+                </h2>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span id="employee_live_status_badge" style="font-size: 11px; padding: 3px 10px; border-radius: 12px; background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.3); font-weight: 600; display: flex; align-items: center; gap: 6px;">
+                        <span class="live-pulse-dot" style="width: 6px; height: 6px; margin: 0;"></span>
+                        <span id="employee_live_status_text">● LIVE REAL-TIME</span>
+                    </span>
+                    <span id="employee_activity_counter" style="font-size: 11px; color: var(--text-muted); font-family: monospace;">{{ movements|length }} logs</span>
+                </div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Item</th>
+                        <th>Qty</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="employee_activity_tbody">
+                {% for m in movements %}
+                <tr id="movement_row_{{ m.id }}">
+                    <td>{{ m.created_at.strftime("%d %b %H:%M") }}</td>
+                    <td><b{% if m.note %} title="{{ m.note }}"{% endif %}>{{ m.item }}</b></td>
+                    <td>{{ m.quantity }}</td>
+                    <td>
+                        {% if m.direction=="IN" %}
+                        <span style="color: #10b981; font-weight: bold;">▲ IN</span>
+                        {% else %}
+                        <span style="color: #60a5fa; font-weight: bold;">▼ OUT</span>
+                        {% endif %}
+                    </td>
+                    <td><span class="status-badge status-{{ m.status }}">{{ m.status }}</span></td>
+                    <td>
+                        <button type="button" onclick="deleteMovementEmployeeAjax(event, {{ m.id }})" title="Delete this entry" style="background: rgba(239,68,68,0.2); color: #f87171; border: 1px solid #f87171; padding: 4px 8px; border-radius: 6px; cursor: pointer; transition: all 0.2s;">🗑️</button>
+                    </td>
+                </tr>
+                {% else %}
+                <tr id="employee_stream_empty_row"><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 16px;">No recent logs.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="glass panel" style="border-left: 4px solid var(--danger);">
+            <div class="panel-header">
+                <h2>🚨 Report Issue / Request Supply</h2>
+            </div>
+            <form id="employeeIssueForm" action="/issue" method="post" onsubmit="event.preventDefault(); handleEmployeeIssueSubmit(event);" enctype="multipart/form-data">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div>
+                        <label>Related Item</label>
+                        <input name="item" id="issue_item" placeholder="e.g. Forklift" required>
+                    </div>
+                    <div>
+                        <label>Category</label>
+                        <select name="issue_type" id="issue_type">
+                            <option value="Damage">Damage</option>
+                            <option value="Missing">Missing Inventory</option>
+                            <option value="SupplyRequest">Supply Request</option>
+                            <option value="LeaveRequest">Leave Request</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                <label>Description</label>
+                <textarea name="description" id="issue_description" placeholder="Describe the problem or request..." required></textarea>
+                <label>Attach Photo (Optional)</label>
+                <input type="file" name="photo" id="issue_photo" accept="image/*" style="padding: 8px; background: rgba(0,0,0,0.1);">
+                <button type="submit" id="issueSubmitBtn" class="btn-danger">Send Alert to Management</button>
+            </form>
+        </div>
+
+        <div class="glass panel">
+            <div class="panel-header">
+                <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                    <h2>🚨 My Open Issues</h2>
+                    <span style="font-size: 10px; background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 2px 6px; border-radius: 4px; font-weight: 600; letter-spacing: 0.5px;">REAL-TIME</span>
+                </div>
+            </div>
+            <div id="employee_issues_container">
+            {% for i in issues %}
+            <div class="message-box" id="issue_box_{{ i.id }}" style="border-left-color: var(--warning);">
+                <div class="msg-meta">
+                    <span>{{ i.issue_type }}</span>
+                    <span>Status: {{ i.status }}</span>
+                </div>
+                <div class="msg-title">{{ i.item }}</div>
+                <div class="msg-body">{{ i.description }}</div>
+                {% if i.photo %}
+                <div style="margin-top: 12px;">
+                    <img src="{{ url_for('static', filename='issues/' + i.photo) }}" style="max-width: 100%; max-height: 200px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+                </div>
+                {% endif %}
+                
+                <div style="margin-top: 16px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                    <h4 style="margin: 0 0 10px 0; font-size: 13px; color: var(--primary);">💬 Discussion</h4>
+                    <div id="issue_discussion_{{ i.id }}">
+                    {% for c in i.comments %}
+                        <div style="margin-bottom: 8px; font-size: 13px;">
+                            <span style="color: #a78bfa; font-weight: bold;">{{ c.sender_id }}:</span> 
+                            <span style="color: var(--text-main);">{{ c.body }}</span>
+                            <span style="font-size: 10px; color: var(--text-muted); float: right;">{{ c.created_at.strftime("%H:%M") }}</span>
+                        </div>
+                    {% else %}
+                        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">No comments yet.</div>
+                    {% endfor %}
+                    </div>
+                    
+                    <form onsubmit="handleIssueCommentSubmit(event, {{ i.id }})" style="display: flex; gap: 8px; margin-top: 10px;">
+                        <input type="text" name="body" placeholder="Add a comment..." required style="flex: 1; padding: 6px; font-size: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: white;">
+                        <button type="submit" class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;">Post</button>
+                    </form>
+                </div>
+            </div>
+            {% else %}
+            <p style="color: var(--text-muted);">✅ No active issues reported by you.</p>
+            {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div>
+        <div class="glass panel common-terminal">
+            <div class="panel-header" style="border-bottom-color: rgba(139, 92, 246, 0.3);">
+                <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                    <h2 class="terminal-header">COMMON_TERMINAL</h2>
+                    <span style="font-size: 10px; background: rgba(139, 92, 246, 0.15); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, 0.3); padding: 2px 6px; border-radius: 4px; font-weight: 600; letter-spacing: 0.5px;">● LIVE REAL-TIME</span>
+                </div>
+            </div>
+            <div id="common_terminal_stream" style="max-height: 250px; overflow-y: auto;">
+                {% for m in common_messages %}
+                <div class="message-box message-common" id="broadcast_msg_{{ m.id }}">
+                    <div class="msg-meta">
+                        <span>Broadcast by {{ m.sender_id }}</span>
+                        <span>{{ m.created_at.strftime("%d %b %H:%M") }}</span>
+                    </div>
+                    <div class="msg-title">{{ m.subject }}</div>
+                    <div class="msg-body">{{ m.body }}</div>
+                </div>
+                {% else %}
+                <p id="common_terminal_empty" style="color: var(--text-muted);">No broadcasts.</p>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="glass panel">
+            <div class="panel-header">
+                <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                    <h2>🔒 Confidential Inbox <span style="background: var(--danger); padding: 2px 8px; border-radius: 10px; font-size: 12px; margin-left: 8px;" id="unread">{{ unread }}</span></h2>
+                    <span style="font-size: 10px; background: rgba(139, 92, 246, 0.15); color: #c4b5fd; border: 1px solid rgba(139, 92, 246, 0.3); padding: 2px 6px; border-radius: 4px; font-weight: 600; letter-spacing: 0.5px;">SECURE LIVE</span>
+                </div>
+            </div>
+            <div id="confidential_inbox_list" style="max-height: 400px; overflow-y: auto;">
+            {% for m in messages %}
+            <div class="message-box" id="inbox_msg_{{ m.id }}" style="{% if not m.is_read and m.receiver_id == user.user_id %}border-left-color: var(--warning);{% endif %}">
+                <div class="msg-meta">
+                    {% if m.sender_id == user.user_id %}
+                        <span style="color: var(--success); cursor: pointer; text-decoration: underline;" onclick="quickMessage('{{ m.receiver_id }}')" title="Direct Message">Sent to {{ m.receiver_id }}</span>
+                    {% else %}
+                        <span style="cursor: pointer; color: var(--primary); text-decoration: underline;" onclick="quickMessage('{{ m.sender_id }}')" title="Direct Message">From {{ m.sender_id }}</span>
+                    {% endif %}
+                    <span>{{ m.created_at.strftime("%d %b %H:%M") }}</span>
+                </div>
+                <div class="msg-title">{{ m.subject }}</div>
+                <div class="msg-body">{{ m.body }}</div>
+                <div style="margin-top: 10px; display: flex; gap: 8px;">
+                    {% set other_user = m.receiver_id if m.sender_id == user.user_id else m.sender_id %}
+                    <a href="/conversation/{{ user.user_id }}/{{ other_user }}" class="btn" style="padding: 6px 12px; font-size: 13px; background: rgba(139,92,246,0.2); color: #c4b5fd; text-decoration: none;">View History</a>
+                    {% if not m.is_read and m.receiver_id == user.user_id %}
+                    <button class="btn" onclick="markMessageReadAjax(event, {{ m.id }})" style="padding: 6px 12px; font-size: 13px; background: rgba(255,255,255,0.1);">Mark Read</button>
+                    {% endif %}
+                    <button class="btn btn-purple" style="padding: 6px 12px; font-size: 13px;" onclick="replyTo('{{ other_user }}')">Reply</button>
+                    <button class="btn btn-danger" onclick="deleteConversationAjax(event, '{{ user.user_id }}', '{{ other_user }}')" style="padding: 6px 12px; font-size: 13px;">🗑️</button>
+                </div>
+            </div>
+            {% else %}
+            <p style="color: var(--text-muted);">No confidential messages.</p>
+            {% endfor %}
+            </div>
+
+            <hr style="border: 0; border-top: 1px solid var(--glass-border); margin: 20px 0;">
+            
+            <h3>Send Secure Message</h3>
+            <form id="secureMsgForm" action="/message/send" method="post" onsubmit="event.preventDefault(); handleSecureMessageSubmit(event);">
+                <input type="hidden" name="msg_type" value="confidential">
+                <label>Receiver ID</label>
+                <select name="receiver_id" id="secureReceiverSelect" required style="background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); color: var(--text-main); padding: 12px 16px; border-radius: 10px; width: 100%; margin-bottom: 16px;">
+                    <option value="" disabled selected>Whom to send?</option>
+                    <optgroup label="🟢 Logged In & Working (Active)" id="optgroup_active">
+                        {% for u in active_users %}
+                            {% if u.user_id != user.user_id %}
+                            <option value="{{ u.user_id }}">🟢 {{ u.name }} ({{ u.role|capitalize }})</option>
+                            {% endif %}
+                        {% endfor %}
+                    </optgroup>
+                    <optgroup label="⚪ Logged Out (Offline)" id="optgroup_offline">
+                        {% for u in offline_users %}
+                            {% if u.user_id != user.user_id %}
+                            <option value="{{ u.user_id }}">⚪ {{ u.name }} ({{ u.role|capitalize }})</option>
+                            {% endif %}
+                        {% endfor %}
+                    </optgroup>
+                </select>
+                <label>Message</label>
+                <textarea name="body" id="secure_msg_body" required placeholder="Type confidential message..."></textarea>
+                <button type="submit" id="secureMsgSubmitBtn" class="btn btn-purple" style="width: 100%;">Send Secure</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+let currentParsedFile = null;
+let currentExtractedRows = [];
+
+function switchMovementTab(tab) {
+    const manualPane = document.getElementById('movement_manual_pane');
+    const excelPane = document.getElementById('movement_excel_pane');
+    const manualBtn = document.getElementById('tab_manual_btn');
+    const excelBtn = document.getElementById('tab_excel_btn');
+
+    if (tab === 'manual') {
+        manualPane.style.display = 'block';
+        excelPane.style.display = 'none';
+        manualBtn.style.background = 'var(--primary)';
+        manualBtn.style.color = 'white';
+        excelBtn.style.background = 'transparent';
+        excelBtn.style.color = 'var(--text-muted)';
+    } else {
+        manualPane.style.display = 'none';
+        excelPane.style.display = 'block';
+        manualBtn.style.background = 'transparent';
+        manualBtn.style.color = 'var(--text-muted)';
+        excelBtn.style.background = 'var(--primary)';
+        excelBtn.style.color = 'white';
+    }
+}
+
+// Drag & Drop handlers
+const dropzone = document.getElementById('excelDropzone');
+if (dropzone) {
+    ['dragenter', 'dragover'].forEach(name => {
+        dropzone.addEventListener(name, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.style.borderColor = '#10b981';
+            dropzone.style.background = 'rgba(16, 185, 129, 0.12)';
+        }, false);
+    });
+    ['dragleave', 'drop'].forEach(name => {
+        dropzone.addEventListener(name, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.style.borderColor = 'rgba(139, 92, 246, 0.4)';
+            dropzone.style.background = 'rgba(139, 92, 246, 0.05)';
+        }, false);
+    });
+    dropzone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        if (files && files.length) {
+            document.getElementById('excelFileInput').files = files;
+            handleExcelSelect(files);
+        }
+    });
+}
+
+function handleExcelSelect(files) {
+    if (!files || !files.length) return;
+    currentParsedFile = files[0];
+    parseSelectedFile(currentParsedFile);
+}
+
+function clearExcelSelection() {
+    currentParsedFile = null;
+    currentExtractedRows = [];
+    document.getElementById('excelFileInput').value = '';
+    document.getElementById('extractedJsonInput').value = '';
+    document.getElementById('excelPreviewBox').style.display = 'none';
+    document.getElementById('submitExcelBtn').style.display = 'none';
+    document.getElementById('dropzoneText').textContent = 'Click to select or drag & drop Excel / CSV file here';
+}
+
+function parseSelectedFile(file) {
+    document.getElementById('dropzoneText').textContent = 'Selected: ' + file.name + ' (' + Math.round(file.size / 1024) + ' KB)';
+    const defaultDir = document.getElementById('excelDefaultDirection').value;
+    const lowerName = file.name.toLowerCase();
+
+    // 1. If it's a CSV or text file, parse directly in browser without relying on external SheetJS
+    if (lowerName.endsWith('.csv') || lowerName.endsWith('.tsv') || lowerName.endsWith('.txt')) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const text = e.target.result;
+                const rows = parseCsvText(text, lowerName);
+                if (rows && rows.length > 0) {
+                    processRawExcelRows(rows, file.name, defaultDir);
+                } else {
+                    fallbackServerPreview(file, defaultDir);
+                }
+            } catch(err) {
+                fallbackServerPreview(file, defaultDir);
+            }
+        };
+        reader.onerror = function() { fallbackServerPreview(file, defaultDir); };
+        reader.readAsText(file);
+        return;
+    }
+
+    // 2. For .xlsx / .xls, use SheetJS if loaded, otherwise fallback immediately to server parser
+    if (typeof XLSX !== 'undefined') {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const jsonRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                if (jsonRows && jsonRows.length > 0) {
+                    processRawExcelRows(jsonRows, file.name, defaultDir);
+                } else {
+                    fallbackServerPreview(file, defaultDir);
+                }
+            } catch(err) {
+                fallbackServerPreview(file, defaultDir);
+            }
+        };
+        reader.onerror = function() { fallbackServerPreview(file, defaultDir); };
+        reader.readAsArrayBuffer(file);
+    } else {
+        fallbackServerPreview(file, defaultDir);
+    }
+}
+
+// Zero-dependency browser CSV parser supporting comma, semicolon, tab, pipe, and quoted values
+function parseCsvText(text, filename) {
+    if (!text || !text.trim()) return [];
+    const sample = text.slice(0, 4096);
+    const counts = {
+        ',': (sample.match(/,/g) || []).length,
+        ';': (sample.match(/;/g) || []).length,
+        '\t': (sample.match(/\t/g) || []).length,
+        '|': (sample.match(/\|/g) || []).length
+    };
+    let delim = ',';
+    let maxCount = 0;
+    for (const d in counts) {
+        if (counts[d] > maxCount) {
+            maxCount = counts[d];
+            delim = d;
+        }
+    }
+    if (filename && filename.endsWith('.tsv')) delim = '\t';
+
+    const lines = text.split(/\r\n|\n|\r/);
+    const rows = [];
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line.trim()) continue;
+        
+        const row = [];
+        let inQuotes = false;
+        let token = '';
+        for (let c = 0; c < line.length; c++) {
+            const ch = line[c];
+            if (ch === '"') {
+                inQuotes = !inQuotes;
+            } else if (ch === delim && !inQuotes) {
+                row.push(token.trim().replace(/^"|"$/g, ''));
+                token = '';
+            } else {
+                token += ch;
+            }
+        }
+        row.push(token.trim().replace(/^"|"$/g, ''));
+        if (row.some(c => c !== '')) rows.push(row);
+    }
+    return rows;
+}
+
+function processRawExcelRows(rawRows, filename, defaultDir) {
+    if (!rawRows || !rawRows.length) {
+        showLiveToast('⚠️ The selected file appears to be empty.', 'warning');
+        return;
+    }
+
+    const normalize = h => String(h || '').trim().toLowerCase().replace(/[_-]/g, ' ').replace(/\//g, ' ');
+
+    const ITEM_ALIASES = ['item', 'product', 'sku', 'material', 'name', 'part', 'description', 'desc', 'title', 'goods', 'article', 'particular', 'model', 'code', 'barcode', 'asset', 'inventory'];
+    const QTY_ALIASES = ['quantity', 'qty', 'count', 'units', 'amount', 'pcs', 'pieces', 'vol', 'volume', 'total', 'nos', 'number', 'boxes', 'carton', 'cartons', 'packets', 'pkg'];
+    const DIR_ALIASES = ['direction', 'type', 'movement', 'in out', 'flow', 'action', 'status', 'io', 'inward', 'outward', 'inbound', 'outbound', 'trans', 'mode'];
+    const NOTE_ALIASES = ['note', 'remark', 'comment', 'details', 'reason', 'batch', 'po', 'location', 'memo', 'supplier', 'dest', 'destination', 'ref', 'reference'];
+
+    // Scan first 10 rows to detect the true header row
+    let headerIdx = -1;
+    let itemCol = -1, qtyCol = -1, dirCol = -1, noteCol = -1;
+    const maxScan = Math.min(rawRows.length, 10);
+
+    for (let rIdx = 0; rIdx < maxScan; rIdx++) {
+        const row = (rawRows[rIdx] || []).map(normalize);
+        let iC = -1, qC = -1, dC = -1, nC = -1;
+        for (let cIdx = 0; cIdx < row.length; cIdx++) {
+            const cell = row[cIdx];
+            if (!cell) continue;
+            if (iC === -1 && ITEM_ALIASES.some(a => cell.includes(a))) iC = cIdx;
+            else if (qC === -1 && QTY_ALIASES.some(a => cell.includes(a))) qC = cIdx;
+            else if (dC === -1 && DIR_ALIASES.some(a => cell.includes(a))) dC = cIdx;
+            else if (nC === -1 && NOTE_ALIASES.some(a => cell.includes(a))) nC = cIdx;
+        }
+        if (iC !== -1 && qC !== -1) {
+            headerIdx = rIdx;
+            itemCol = iC; qtyCol = qC; dirCol = dC; noteCol = nC;
+            break;
+        } else if ((iC !== -1 || qC !== -1) && headerIdx === -1) {
+            headerIdx = rIdx;
+            itemCol = iC; qtyCol = qC; dirCol = dC; noteCol = nC;
+        }
+    }
+
+    let dataRows = [];
+    let startLine = 1;
+    if (headerIdx !== -1) {
+        dataRows = rawRows.slice(headerIdx + 1);
+        startLine = headerIdx + 2;
+    } else {
+        itemCol = 0;
+        qtyCol = rawRows[0].length > 1 ? 1 : -1;
+        dirCol = rawRows[0].length > 2 ? 2 : -1;
+        noteCol = rawRows[0].length > 3 ? 3 : -1;
+        dataRows = rawRows;
+        startLine = 1;
+    }
+
+    if (itemCol === -1) itemCol = 0;
+    if (qtyCol === -1 && rawRows[0] && rawRows[0].length > 1) qtyCol = 1;
+
+    const records = [];
+    const warnings = [];
+
+    dataRows.forEach((row, idx) => {
+        if (!row || !row.length || row.every(c => !String(c || '').trim())) return;
+        
+        const itemVal = String(row[itemCol] || '').trim();
+        if (!itemVal) {
+            warnings.push('Row ' + (startLine + idx) + ': Skipped (empty item name)');
+            return;
+        }
+
+        const qtyRaw = String(row[qtyCol] || '0').replace(/,/g, '').trim();
+        const numMatch = qtyRaw.match(/[-+]?\d*\.?\d+/);
+        const qtyVal = numMatch ? Math.round(parseFloat(numMatch[0])) : 0;
+
+        if (isNaN(qtyVal) || qtyVal <= 0) {
+            warnings.push('Row ' + (startLine + idx) + ' (' + itemVal + '): Skipped invalid quantity "' + qtyRaw + '"');
+            return;
+        }
+
+        let dirVal = defaultDir;
+        if (dirCol !== -1 && row[dirCol] !== undefined) {
+            const rawD = String(row[dirCol]).trim().toUpperCase();
+            if (['OUT', 'DISP', 'SEND', 'EXP', 'LEAVE', '-', 'OUTWARD', 'OUTBOUND', 'DISPATCH', 'EXIT', 'EXPORT', 'ISSUE', 'DELIVERY', 'SHIPPED'].some(k => rawD.includes(k))) {
+                dirVal = 'OUT';
+            } else if (['IN', 'REC', 'ARR', 'ENT', '+', 'INWARD', 'INBOUND', 'RECEIVE', 'ENTRY', 'RESTOCK', 'PURCHASE', 'IMPORT', 'RETURN'].some(k => rawD.includes(k))) {
+                dirVal = 'IN';
+            }
+        }
+
+        const noteVal = (noteCol !== -1 && row[noteCol] !== undefined) ? String(row[noteCol]).trim() : '';
+
+        records.push({
+            item: itemVal,
+            quantity: qtyVal,
+            direction: dirVal,
+            note: noteVal
+        });
+    });
+
+    renderExtractionPreview(filename, records, warnings);
+}
+
+function fallbackServerPreview(file, defaultDir) {
+    const fd = new FormData();
+    fd.append('excel_file', file);
+    fd.append('default_direction', defaultDir);
+
+    fetch('/movement/preview-excel', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(d => {
+            if (d.ok) {
+                renderExtractionPreview(d.filename, d.records, d.errors);
+            } else {
+                showLiveToast('❌ ' + (d.error || 'Failed to extract file contents.'), 'error');
+            }
+        })
+        .catch(err => {
+            showLiveToast('❌ Error parsing Excel file on server.', 'error');
+        });
+}
+
+function renderExtractionPreview(filename, records, warnings) {
+    currentExtractedRows = records;
+    document.getElementById('extractedJsonInput').value = JSON.stringify(records);
+
+    document.getElementById('previewFileName').textContent = filename;
+    const inCount = records.filter(r => r.direction === 'IN').length;
+    const outCount = records.length - inCount;
+    document.getElementById('previewStats').textContent = records.length + ' items extracted (' + inCount + ' IN, ' + outCount + ' OUT)';
+
+    const warnBox = document.getElementById('previewWarningBox');
+    if (warnings && warnings.length) {
+        warnBox.style.display = 'block';
+        warnBox.innerHTML = '<strong>⚠️ Formatting Notice:</strong> ' + warnings.slice(0, 3).join('; ') + (warnings.length > 3 ? ' (+' + (warnings.length - 3) + ' more)' : '');
+    } else {
+        warnBox.style.display = 'none';
+    }
+
+    const tbody = document.getElementById('previewTbody');
+    if (!records.length) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 12px;">No valid movement records found in this file.</td></tr>';
+        document.getElementById('submitExcelBtn').style.display = 'none';
+    } else {
+        tbody.innerHTML = records.map((r, i) => `
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <td style="padding: 6px 10px; text-align: center; color: var(--text-muted);">${i + 1}</td>
+                <td style="padding: 6px 10px; font-weight: 500;">${r.item}</td>
+                <td style="padding: 6px 10px; text-align: center; font-weight: bold;">${r.quantity}</td>
+                <td style="padding: 6px 10px; text-align: center;">
+                    <span style="color: ${r.direction === 'IN' ? '#10b981' : '#60a5fa'}; font-weight: bold; font-size: 11px;">
+                        ${r.direction === 'IN' ? '▲ IN' : '▼ OUT'}
+                    </span>
+                </td>
+                <td style="padding: 6px 10px; color: var(--text-muted); font-size: 11px;">${r.note || '-'}</td>
+            </tr>
+        `).join('');
+
+        const submitBtn = document.getElementById('submitExcelBtn');
+        submitBtn.style.display = 'block';
+        submitBtn.textContent = '🚀 Confirm & Log ' + records.length + ' Extracted Movements';
+    }
+
+    document.getElementById('excelPreviewBox').style.display = 'block';
+}
+
+
+let currentUserId = '{{ user.user_id }}';
+let prevEmpMovementsJson = '';
+let highestSeenEmpMovementId = {{ movements[0].id if movements else 0 }};
+let isInitialEmpMovementLoad = true;
+const liveChannel = ('BroadcastChannel' in window) ? new BroadcastChannel('warehouse_live_activity') : null;
+
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function updateEmployeeLiveCount() {
+    const tbody = document.getElementById('employee_activity_tbody');
+    const counterEl = document.getElementById('employee_activity_counter');
+    if (tbody && counterEl) {
+        const rows = tbody.querySelectorAll('tr[id^="movement_row_"]');
+        counterEl.textContent = rows.length + ' logs';
+    }
+}
+
+function renderSingleEmployeeMovementRow(m, isNew) {
+    const inBadge = '<span style="color: #10b981; font-weight: bold;">▲ IN</span>';
+    const outBadge = '<span style="color: #60a5fa; font-weight: bold;">▼ OUT</span>';
+    const noteAttr = m.note ? ` title="${escapeHtml(m.note)}"` : '';
+
+    return `
+    <tr id="movement_row_${m.id}" class="${isNew ? 'row-highlight-new' : ''}">
+        <td>${escapeHtml(m.short_time || (m.date + ' ' + (m.time ? m.time.slice(0, 5) : '')))}</td>
+        <td><b${noteAttr}>${escapeHtml(m.item)}</b></td>
+        <td>${escapeHtml(m.quantity)}</td>
+        <td>${m.direction === 'IN' ? inBadge : outBadge}</td>
+        <td><span class="status-badge status-${escapeHtml(m.status)}">${escapeHtml(m.status)}</span></td>
+        <td>
+            <button type="button" onclick="deleteMovementEmployeeAjax(event, ${m.id})" title="Delete this entry" style="background: rgba(239,68,68,0.2); color: #f87171; border: 1px solid #f87171; padding: 4px 8px; border-radius: 6px; cursor: pointer; transition: all 0.2s;">🗑️</button>
+        </td>
+    </tr>`;
+}
+
+function renderEmployeeMovementRows(movements, isFirstLoad) {
+    const myMovements = (movements || []).filter(m => !m.created_by || m.created_by === currentUserId);
+    if (myMovements.length === 0) {
+        return '<tr id="employee_stream_empty_row"><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 16px;">No recent logs.</td></tr>';
+    }
+    return myMovements.map(m => {
+        const isNew = !isFirstLoad && (m.id > highestSeenEmpMovementId);
+        return renderSingleEmployeeMovementRow(m, isNew);
+    }).join('');
+}
+
+function handleLiveActivityEvent(data) {
+    if (!data) return;
+    const tbody = document.getElementById('employee_activity_tbody');
+    if (!tbody) return;
+
+    if (data.action === 'created' && data.movement) {
+        const m = data.movement;
+        if (m.created_by && m.created_by !== currentUserId) return; // Employee only tracks their own activity
+        if (document.getElementById('movement_row_' + m.id)) return;
+        const emptyRow = document.getElementById('employee_stream_empty_row') || tbody.querySelector('td[colspan="6"]');
+        if (emptyRow) {
+            const tr = emptyRow.closest('tr');
+            if (tr) tr.remove();
+        }
+        
+        const rowHtml = renderSingleEmployeeMovementRow(m, true);
+        tbody.insertAdjacentHTML('afterbegin', rowHtml);
+        if (m.id > highestSeenEmpMovementId) highestSeenEmpMovementId = m.id;
+        updateEmployeeLiveCount();
+    } else if (data.action === 'batch_created' && Array.isArray(data.movements)) {
+        const emptyRow = document.getElementById('employee_stream_empty_row') || tbody.querySelector('td[colspan="6"]');
+        if (emptyRow) {
+            const tr = emptyRow.closest('tr');
+            if (tr) tr.remove();
+        }
+        data.movements.forEach(m => {
+            if ((!m.created_by || m.created_by === currentUserId) && !document.getElementById('movement_row_' + m.id)) {
+                tbody.insertAdjacentHTML('afterbegin', renderSingleEmployeeMovementRow(m, true));
+                if (m.id > highestSeenEmpMovementId) highestSeenEmpMovementId = m.id;
+            }
+        });
+        updateEmployeeLiveCount();
+    } else if (data.action === 'verified') {
+        const row = document.getElementById('movement_row_' + data.id);
+        if (row) {
+            const statusBadge = row.querySelector('.status-badge');
+            if (statusBadge) {
+                statusBadge.className = 'status-badge status-' + data.status + ' row-status-pulsed';
+                statusBadge.textContent = data.status;
+            }
+            showLiveToast(`✔ Movement #${data.id} was marked <b>${data.status}</b> by supervisor/manager!`, data.status === 'Verified' ? 'success' : 'warning');
+        }
+    } else if (data.action === 'deleted' || data.action === 'manager_deleted' || data.action === 'hard_deleted') {
+        const row = document.getElementById('movement_row_' + data.id);
+        if (row) {
+            row.classList.add('row-fade-out');
+            setTimeout(() => {
+                row.remove();
+                updateEmployeeLiveCount();
+                if (tbody.querySelectorAll('tr[id^="movement_row_"]').length === 0) {
+                    tbody.innerHTML = '<tr id="employee_stream_empty_row"><td colspan="6" style="text-align: center; color: var(--text-muted); padding: 16px;">No recent logs.</td></tr>';
+                }
+            }, 350);
+        }
+    } else if (data.action === 'restored' && data.movement) {
+        const empTbody = document.getElementById('employee_activity_tbody');
+        if (empTbody && data.movement.created_by === currentUserId && !document.getElementById('movement_row_' + data.id)) {
+            const emptyRow = document.getElementById('employee_stream_empty_row');
+            if (emptyRow) emptyRow.remove();
+            empTbody.insertAdjacentHTML('afterbegin', renderSingleEmployeeMovementRow(data.movement, true));
+            updateEmployeeLiveCount();
+        }
+    } else if (data.action === 'common_broadcast' && data.message) {
+        const stream = document.getElementById('common_terminal_stream');
+        if (stream) {
+            const empty = document.getElementById('common_terminal_empty') || stream.querySelector('p');
+            if (empty && empty.textContent.includes('No broadcasts')) empty.remove();
+            if (!document.getElementById('broadcast_msg_' + data.message.id)) {
+                const html = `
+                <div class="message-box message-common item-highlight-new" id="broadcast_msg_${data.message.id}">
+                    <div class="msg-meta">
+                        <span>Broadcast by ${escapeHtml(data.message.sender_id)}</span>
+                        <span>${escapeHtml(data.message.created_at)}</span>
+                    </div>
+                    <div class="msg-title">${escapeHtml(data.message.subject)}</div>
+                    <div class="msg-body">${escapeHtml(data.message.body)}</div>
+                </div>`;
+                stream.insertAdjacentHTML('afterbegin', html);
+                showLiveToast(`📢 <b>[COMMON_TERMINAL]</b> ${escapeHtml(data.message.sender_id)}: ${escapeHtml(data.message.subject)}`, 'activity');
+            }
+        }
+    } else if (data.action === 'message_deleted') {
+        const bMsg = document.getElementById('broadcast_msg_' + data.id);
+        if (bMsg) {
+            bMsg.classList.add('row-fade-out');
+            setTimeout(() => {
+                bMsg.remove();
+                const stream = document.getElementById('common_terminal_stream');
+                if (stream && stream.querySelectorAll('.message-box').length === 0) {
+                    stream.innerHTML = '<p id="common_terminal_empty" style="color: var(--text-muted);">No broadcasts.</p>';
+                }
+            }, 350);
+        }
+        const inMsg = document.getElementById('inbox_msg_' + data.id);
+        if (inMsg) {
+            inMsg.classList.add('row-fade-out');
+            setTimeout(() => inMsg.remove(), 350);
+        }
+    } else if (data.action === 'confidential_message' && data.message) {
+        const m = data.message;
+        const inbox = document.getElementById('confidential_inbox_list');
+        if (inbox && (m.receiver_id === currentUserId || m.sender_id === currentUserId)) {
+            const empty = inbox.querySelector('p');
+            if (empty && empty.textContent.includes('No confidential messages')) empty.remove();
+            if (!document.getElementById('inbox_msg_' + m.id)) {
+                const otherUser = (m.sender_id === currentUserId) ? m.receiver_id : m.sender_id;
+                const html = `
+                <div class="message-box item-highlight-new" id="inbox_msg_${m.id}" style="${(!m.is_read && m.receiver_id === currentUserId) ? 'border-left-color: var(--warning);' : ''}">
+                    <div class="msg-meta">
+                        ${m.sender_id === currentUserId ? `
+                            <span style="color: var(--success); cursor: pointer; text-decoration: underline;" onclick="quickMessage('${escapeHtml(m.receiver_id)}')">Sent to ${escapeHtml(m.receiver_id)}</span>
+                        ` : `
+                            <span style="cursor: pointer; color: var(--primary); text-decoration: underline;" onclick="quickMessage('${escapeHtml(m.sender_id)}')">From ${escapeHtml(m.sender_id)}</span>
+                        `}
+                        <span>${escapeHtml(m.created_at)}</span>
+                    </div>
+                    <div class="msg-title">${escapeHtml(m.subject)}</div>
+                    <div class="msg-body">${escapeHtml(m.body)}</div>
+                    <div style="margin-top: 10px; display: flex; gap: 8px;">
+                        <a href="/conversation/${encodeURIComponent(currentUserId)}/${encodeURIComponent(otherUser)}" class="btn" style="padding: 6px 12px; font-size: 13px; background: rgba(139,92,246,0.2); color: #c4b5fd; text-decoration: none;">View History</a>
+                        ${(!m.is_read && m.receiver_id === currentUserId) ? `
+                        <button class="btn" onclick="markMessageReadAjax(event, ${m.id})" style="padding: 6px 12px; font-size: 13px; background: rgba(255,255,255,0.1);">Mark Read</button>
+                        ` : ''}
+                        <button class="btn btn-purple" style="padding: 6px 12px; font-size: 13px;" onclick="replyTo('${escapeHtml(otherUser)}')">Reply</button>
+                        <button class="btn btn-danger" onclick="deleteConversationAjax(event, '${escapeHtml(currentUserId)}', '${escapeHtml(otherUser)}')" style="padding: 6px 12px; font-size: 13px;">🗑️</button>
+                    </div>
+                </div>`;
+                inbox.insertAdjacentHTML('afterbegin', html);
+                if (m.receiver_id === currentUserId) {
+                    const unreadEl = document.getElementById('unread');
+                    if (unreadEl) {
+                        const count = parseInt(unreadEl.textContent || '0') + 1;
+                        unreadEl.textContent = count;
+                    }
+                    showLiveToast(`🔒 <b>Confidential Message</b> from <b>${escapeHtml(m.sender_id)}</b>: ${escapeHtml(m.subject)}`, 'activity');
+                }
+            }
+        }
+    } else if (data.action === 'message_read') {
+        const msg = document.getElementById('inbox_msg_' + data.id);
+        if (msg) {
+            msg.style.borderLeftColor = '';
+            const markBtn = msg.querySelector('button[onclick*="markMessageReadAjax"]');
+            if (markBtn) markBtn.remove();
+        }
+        if (data.receiver_id === currentUserId) {
+            const unreadEl = document.getElementById('unread');
+            if (unreadEl && typeof data.unread !== 'undefined') unreadEl.textContent = data.unread;
+        }
+    } else if (data.action === 'conversation_deleted') {
+        const inbox = document.getElementById('confidential_inbox_list');
+        if (inbox) {
+            const cards = inbox.querySelectorAll('.message-box');
+            cards.forEach(card => {
+                if (card.innerHTML.includes(data.u1) && card.innerHTML.includes(data.u2)) {
+                    card.classList.add('row-fade-out');
+                    setTimeout(() => card.remove(), 350);
+                }
+            });
+        }
+    } else if (data.action === 'issue_created' && data.issue) {
+        const iss = data.issue;
+        if (iss.created_by === currentUserId) {
+            const container = document.getElementById('employee_issues_container');
+            if (container) {
+                const empty = container.querySelector('p');
+                if (empty && empty.textContent.includes('No active issues')) empty.remove();
+                if (!document.getElementById('issue_box_' + iss.id)) {
+                    const html = `
+                    <div class="message-box danger-highlight-new" id="issue_box_${iss.id}" style="border-left-color: var(--warning);">
+                        <div class="msg-meta">
+                            <span>${escapeHtml(iss.issue_type)}</span>
+                            <span>Status: Open</span>
+                        </div>
+                        <div class="msg-title">${escapeHtml(iss.item)}</div>
+                        <div class="msg-body">${escapeHtml(iss.description)}</div>
+                        ${iss.photo ? `
+                        <div style="margin-top: 12px;">
+                            <img src="/static/issues/${escapeHtml(iss.photo)}" style="max-width: 100%; max-height: 200px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+                        </div>` : ''}
+                        <div style="margin-top: 16px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                            <h4 style="margin: 0 0 10px 0; font-size: 13px; color: var(--primary);">💬 Discussion</h4>
+                            <div id="issue_discussion_${iss.id}">
+                                <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">No comments yet.</div>
+                            </div>
+                            <form onsubmit="handleIssueCommentSubmit(event, ${iss.id})" style="display: flex; gap: 8px; margin-top: 10px;">
+                                <input type="text" name="body" placeholder="Add a comment..." required style="flex: 1; padding: 6px; font-size: 12px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: white;">
+                                <button type="submit" class="btn btn-primary" style="padding: 6px 12px; font-size: 12px;">Post</button>
+                            </form>
+                        </div>
+                    </div>`;
+                    container.insertAdjacentHTML('afterbegin', html);
+                }
+            }
+        }
+    } else if (data.action === 'issue_commented' && data.comment) {
+        const disc = document.getElementById('issue_discussion_' + data.issue_id);
+        if (disc) {
+            const empty = disc.querySelector('div');
+            if (empty && empty.textContent.includes('No comments yet')) empty.remove();
+            const commentHtml = `
+            <div class="item-highlight-new" style="margin-bottom: 8px; font-size: 13px; padding: 4px 6px; border-radius: 6px;">
+                <span style="color: #a78bfa; font-weight: bold;">${escapeHtml(data.comment.sender_id)}:</span> 
+                <span style="color: var(--text-main);">${escapeHtml(data.comment.body)}</span>
+                <span style="font-size: 10px; color: var(--text-muted); float: right;">${escapeHtml(data.comment.time)}</span>
+            </div>`;
+            disc.insertAdjacentHTML('beforeend', commentHtml);
+        }
+    } else if (data.action === 'issue_resolved') {
+        const box = document.getElementById('issue_box_' + data.issue_id);
+        if (box) {
+            box.classList.add('row-fade-out');
+            setTimeout(() => {
+                box.remove();
+                const container = document.getElementById('employee_issues_container');
+                if (container && container.querySelectorAll('.message-box').length === 0) {
+                    container.innerHTML = '<p style="color: var(--text-muted);">✅ No active issues reported by you.</p>';
+                }
+            }, 350);
+            showLiveToast(`✔ Your reported issue #${data.issue_id} was resolved by ${escapeHtml(data.resolved_by)}!`, 'success');
+        }
+    } else if (data.action === 'issue_deleted') {
+        const box = document.getElementById('issue_box_' + data.issue_id);
+        if (box) {
+            box.classList.add('row-fade-out');
+            setTimeout(() => box.remove(), 350);
+        }
+    }
+}
+
+async function deleteMovementEmployeeAjax(e, movementId) {
+    e.preventDefault();
+    const row = document.getElementById('movement_row_' + movementId);
+    if (row) {
+        row.classList.add('row-fade-out');
+    }
+    try {
+        let res = await fetch(`/movement/${movementId}/delete`, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        let data = await res.json();
+        if (data.ok) {
+            handleLiveActivityEvent({ action: 'deleted', id: movementId, stats: data.stats });
+            if (liveChannel) liveChannel.postMessage({ 
+                action: 'manager_deleted', 
+                id: movementId, 
+                item: data.item,
+                quantity: data.quantity,
+                direction: data.direction,
+                status: 'Deleted',
+                deleted_by: currentUserId,
+                verified_by: currentUserId,
+                stats: data.stats 
+            });
+            showLiveToast('🗑️ Movement deleted successfully.', 'info');
+        } else {
+            if (row) row.classList.remove('row-fade-out');
+            showLiveToast('❌ ' + (data.error || 'Failed to delete'), 'error');
+        }
+    } catch(err) {
+        console.error(err);
+        if (row) row.classList.remove('row-fade-out');
+        showLiveToast('❌ Network error while deleting', 'error');
+    }
+}
+
+// ----------------------------------------------------
+// AI BASED MOVEMENT ASKER CONTROLLER & LIVE SYNC
+// ----------------------------------------------------
+let aiChatHistory = [];
+let aiCurrentDraft = { item: '', quantity: null, direction: 'IN', note: '' };
+let isAiResponding = false;
+let speechRecognizer = null;
+let isListening = false;
+
+function formatAiText(text) {
+    if (!text) return '';
+    return escapeHtml(text)
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/\n/g, '<br>');
+}
+
+function appendAiChatBubble(role, content) {
+    const chatFlow = document.getElementById('aiAskerChatFlow');
+    if (!chatFlow) return;
+
+    const isUser = (role === 'user');
+    const msgDiv = document.createElement('div');
+    msgDiv.className = `ai-msg ${isUser ? 'ai-msg-user' : 'ai-msg-assistant'}`;
+
+    const avatarHtml = `<div class="ai-msg-avatar">${isUser ? '👷' : '🤖'}</div>`;
+    const bubbleHtml = `<div class="ai-bubble">${formatAiText(content)}</div>`;
+
+    msgDiv.innerHTML = avatarHtml + bubbleHtml;
+    chatFlow.appendChild(msgDiv);
+    chatFlow.scrollTop = chatFlow.scrollHeight;
+}
+
+function showAiTypingIndicator() {
+    const chatFlow = document.getElementById('aiAskerChatFlow');
+    if (!chatFlow || document.getElementById('aiTypingIndicator')) return;
+
+    const indDiv = document.createElement('div');
+    indDiv.id = 'aiTypingIndicator';
+    indDiv.className = 'ai-msg ai-msg-assistant';
+    indDiv.innerHTML = `
+        <div class="ai-msg-avatar">🤖</div>
+        <div class="ai-bubble" style="display: flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: 12px;">
+            <span class="live-pulse-dot" style="width: 6px; height: 6px; margin: 0; background: #c4b5fd;"></span>
+            <span>Thinking & parsing movement details...</span>
+        </div>
+    `;
+    chatFlow.appendChild(indDiv);
+    chatFlow.scrollTop = chatFlow.scrollHeight;
+}
+
+function removeAiTypingIndicator() {
+    const ind = document.getElementById('aiTypingIndicator');
+    if (ind) ind.remove();
+}
+
+async function sendAiAskerMessage(msgText) {
+    const text = (msgText || '').trim();
+    if (!text || isAiResponding) return;
+
+    appendAiChatBubble('user', text);
+    aiChatHistory.push({ role: 'user', content: text });
+
+    const inputEl = document.getElementById('aiAskerInput');
+    if (inputEl) inputEl.value = '';
+
+    isAiResponding = true;
+    showAiTypingIndicator();
+
+    const sendBtn = document.getElementById('aiSendBtn');
+    if (sendBtn) sendBtn.disabled = true;
+
+    try {
+        const payload = {
+            action: 'chat',
+            message: text,
+            history: aiChatHistory,
+            draft: aiCurrentDraft
+        };
+
+        const res = await fetch('/api/ai/movement-asker', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        removeAiTypingIndicator();
+
+        if (data.ok) {
+            appendAiChatBubble('assistant', data.reply_message);
+            aiChatHistory.push({ role: 'assistant', content: data.reply_message });
+
+            if (data.auto_confirmed && data.logged_movements && data.logged_movements.length > 0) {
+                // 1. Prepend to live activity table on this device immediately!
+                handleLiveActivityEvent({
+                    action: data.logged_movements.length > 1 ? 'batch_created' : 'created',
+                    movement: data.logged_movements[0],
+                    movements: data.logged_movements
+                });
+
+                // 2. Broadcast across tabs and devices
+                if (liveChannel) {
+                    liveChannel.postMessage({
+                        action: data.logged_movements.length > 1 ? 'batch_created' : 'created',
+                        movement: data.logged_movements[0],
+                        movements: data.logged_movements,
+                        stats: data.stats
+                    });
+                }
+
+                // 3. Smooth non-blocking toast
+                const summaryNames = data.logged_movements.map(m => `${m.quantity} ${m.item}`).join(', ');
+                showLiveToast(`✅ AI Auto-Confirmed & Logged: ${summaryNames}!`, 'success');
+            }
+        } else {
+            appendAiChatBubble('assistant', '⚠️ ' + (data.error || 'Could not parse response. Please try again.'));
+        }
+    } catch (err) {
+        removeAiTypingIndicator();
+        appendAiChatBubble('assistant', '⚠️ Network error communicating with AI Asker. Please try again.');
+    } finally {
+        isAiResponding = false;
+        if (sendBtn) sendBtn.disabled = false;
+        if (inputEl) inputEl.focus();
+    }
+}
+
+function handleAiAskerSubmit(e) {
+    e.preventDefault();
+    const inputEl = document.getElementById('aiAskerInput');
+    if (inputEl) {
+        sendAiAskerMessage(inputEl.value);
+    }
+}
+
+function selectAiChip(chipText) {
+    const inputEl = document.getElementById('aiAskerInput');
+    if (inputEl) inputEl.value = chipText;
+    sendAiAskerMessage(chipText);
+}
+
+function resetAiAskerChat() {
+    aiChatHistory = [];
+    aiCurrentDraft = { item: '', quantity: null, direction: 'IN', note: '' };
+
+    const inputEl = document.getElementById('aiAskerInput');
+    if (inputEl) inputEl.value = '';
+
+    const chatFlow = document.getElementById('aiAskerChatFlow');
+    if (chatFlow) {
+        chatFlow.innerHTML = `
+            <div class="ai-msg ai-msg-assistant">
+                <div class="ai-msg-avatar">🤖</div>
+                <div class="ai-bubble">
+                    👋 <b>Hello!</b> Give any prompt like <i>"add 70 sofa, 80 car, 90 wheel"</i> or <i>"dispatched 12 forklift batteries"</i>.<br>
+                    <span style="font-size: 12px; color: var(--text-muted);">The AI will <b>auto-confirm and add it by itself</b> (no button click needed), and ask you for any criteria that are left (Item, Qty, Direction, Notes / Bay / PO).</span>
+                </div>
+            </div>
+        `;
+    }
+    showLiveToast('🔄 AI Asker conversation reset.', 'info');
+}
+
+// ----------------------------------------------------
+// Voice / Microphone Dictation via Web Speech API
+// ----------------------------------------------------
+function toggleAiVoiceDictation() {
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRec) {
+        showLiveToast('🎙️ Speech recognition is not supported in this browser. Please type your message.', 'warning');
+        return;
+    }
+
+    const micBtn = document.getElementById('aiMicBtn');
+
+    if (isListening && speechRecognizer) {
+        speechRecognizer.stop();
+        return;
+    }
+
+    try {
+        speechRecognizer = new SpeechRec();
+        speechRecognizer.continuous = false;
+        speechRecognizer.interimResults = false;
+        speechRecognizer.lang = 'en-US';
+
+        speechRecognizer.onstart = function() {
+            isListening = true;
+            if (micBtn) {
+                micBtn.classList.add('mic-btn-active');
+                micBtn.title = 'Listening... Speak now';
+            }
+            showLiveToast('🎙️ Listening... speak your movement now', 'info');
+        };
+
+        speechRecognizer.onresult = function(event) {
+            const transcript = event.results[0][0].transcript;
+            const inputEl = document.getElementById('aiAskerInput');
+            if (inputEl) inputEl.value = transcript;
+            sendAiAskerMessage(transcript);
+        };
+
+        speechRecognizer.onerror = function(event) {
+            isListening = false;
+            if (micBtn) {
+                micBtn.classList.remove('mic-btn-active');
+                micBtn.title = 'Speak with microphone';
+            }
+            if (event.error !== 'no-speech') {
+                showLiveToast('🎙️ Microphone notice: ' + event.error, 'warning');
+            }
+        };
+
+        speechRecognizer.onend = function() {
+            isListening = false;
+            if (micBtn) {
+                micBtn.classList.remove('mic-btn-active');
+                micBtn.title = 'Speak with microphone';
+            }
+        };
+
+        speechRecognizer.start();
+    } catch (e) {
+        isListening = false;
+        if (micBtn) micBtn.classList.remove('mic-btn-active');
+        showLiveToast('🎙️ Could not access microphone: ' + e.message, 'warning');
+    }
+}
+
+// ----------------------------------------------------
+// AJAX Excel / CSV Import Submit (No Page Refresh)
+// ----------------------------------------------------
+async function handleExcelImportSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+    if (currentParsedFile && (!formData.has('excel_file') || !(formData.get('excel_file') instanceof File) || !formData.get('excel_file').size)) {
+        formData.set('excel_file', currentParsedFile);
+    }
+    if (currentExtractedRows && currentExtractedRows.length) {
+        formData.set('extracted_json', JSON.stringify(currentExtractedRows));
+    }
+    const submitBtn = document.getElementById('submitExcelBtn');
+    const origText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = '🚀 Importing movements...';
+
+    try {
+        let res = await fetch('/movement/import-excel', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
+        });
+        let data = await res.json();
+        if (data.ok && data.movements) {
+            clearExcelSelection();
+            showLiveToast(`✅ ${data.message}`, 'success');
+            handleLiveActivityEvent({ action: 'batch_created', movements: data.movements });
+            if (liveChannel) {
+                liveChannel.postMessage({ action: 'batch_created', movements: data.movements, stats: data.stats });
+            }
+        } else {
+            showLiveToast('❌ ' + (data.error || 'Failed to import movements'), 'error');
+        }
+    } catch(err) {
+        showLiveToast('❌ Error importing file. Please try again.', 'error');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = origText;
+    }
+}
+
+// ----------------------------------------------------
+// AJAX Issue Reporting Submit (No Page Refresh)
+// ----------------------------------------------------
+async function handleEmployeeIssueSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
+    const submitBtn = document.getElementById('issueSubmitBtn');
+    const origText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting alert...';
+
+    try {
+        const formData = new FormData(form);
+        let res = await fetch('/issue', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
+        });
+        let data = await res.json();
+        if (data.ok && data.issue) {
+            form.reset();
+            handleLiveActivityEvent({ action: 'issue_created', issue: data.issue, stats: data.stats });
+            if (liveChannel) {
+                liveChannel.postMessage({ action: 'issue_created', issue: data.issue, stats: data.stats });
+            }
+            showLiveToast('🚨 Alert sent to Management successfully!', 'success');
+        } else {
+            showLiveToast('❌ ' + (data.error || 'Failed to report issue'), 'error');
+        }
+    } catch(err) {
+        showLiveToast('❌ Network error submitting issue.', 'error');
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = origText;
+    }
+}
+
+async function handleIssueCommentSubmit(e, issueId) {
+    e.preventDefault();
+    const form = e.target;
+    const input = form.querySelector('input[name="body"]');
+    const body = input ? input.value.trim() : '';
+    if (!body) return;
+    try {
+        const formData = new FormData();
+        formData.append('body', body);
+        let res = await fetch(`/issue/${issueId}/comment`, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
+        });
+        let data = await res.json();
+        if (data.ok && data.comment) {
+            input.value = '';
+            handleLiveActivityEvent({ action: 'issue_commented', issue_id: issueId, comment: data.comment });
+            if (liveChannel) liveChannel.postMessage({ action: 'issue_commented', issue_id: issueId, comment: data.comment });
+            showLiveToast('💬 Comment posted.', 'info');
+        } else {
+            showLiveToast('❌ ' + (data.error || 'Failed to post comment'), 'error');
+        }
+    } catch(err) {
+        console.error(err);
+    }
+}
+
+async function handleSecureMessageSubmit(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const form = e.target || document.getElementById('secureMsgForm');
+    const submitBtn = document.getElementById('secureMsgSubmitBtn');
+    const origText = submitBtn ? submitBtn.textContent : '';
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Sending...'; }
+    try {
+        const formData = new FormData(form);
+        let res = await fetch('/message/send', {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+            body: formData
+        });
+        let data = await res.json();
+        if (data.ok && data.message_data) {
+            const bodyField = document.getElementById('secure_msg_body');
+            if (bodyField) bodyField.value = '';
+            handleLiveActivityEvent({ action: 'confidential_message', message: data.message_data });
+            if (liveChannel) liveChannel.postMessage({ action: 'confidential_message', message: data.message_data });
+            if (typeof showLiveToast === 'function') {
+                showLiveToast('🔒 ' + data.message, 'success');
+            }
+        } else {
+            showLiveToast('❌ ' + (data.error || 'Failed to send message'), 'error');
+        }
+    } catch(err) {
+        console.error('Error sending message:', err);
+        if (typeof showLiveToast === 'function') {
+            showLiveToast('❌ Network error sending message.', 'error');
+        }
+    } finally {
+        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = origText; }
+    }
+}
+
+async function markMessageReadAjax(e, id) {
+    e.preventDefault();
+    try {
+        let res = await fetch(`/messages/read/${id}`, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        let data = await res.json();
+        if (data.ok) {
+            handleLiveActivityEvent({ action: 'message_read', id: id, receiver_id: currentUserId, unread: data.unread });
+            if (liveChannel) liveChannel.postMessage({ action: 'message_read', id: id, receiver_id: currentUserId, unread: data.unread });
+            showLiveToast('✔ Message marked as read.', 'info');
+        }
+    } catch(err) {
+        console.error(err);
+    }
+}
+
+async function deleteConversationAjax(e, u1, u2) {
+    e.preventDefault();
+    try {
+        let res = await fetch(`/conversation/delete/${encodeURIComponent(u1)}/${encodeURIComponent(u2)}`, {
+            method: 'POST',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        let data = await res.json();
+        if (data.ok) {
+            handleLiveActivityEvent({ action: 'conversation_deleted', u1: u1, u2: u2 });
+            if (liveChannel) liveChannel.postMessage({ action: 'conversation_deleted', u1: u1, u2: u2 });
+            showLiveToast('🗑️ Conversation deleted.', 'info');
+        } else {
+            showLiveToast('❌ ' + (data.error || 'Failed to delete'), 'error');
+        }
+    } catch(err) {
+        console.error(err);
+    }
+}
+
+// ----------------------------------------------------
+// Stable Secure Recipient Dropdown Sync
+// ----------------------------------------------------
+function syncReceiverDropdown(activeUsers, offlineUsers) {
+    const receiverSelect = document.getElementById('secureReceiverSelect');
+    if (!receiverSelect) return;
+    if (document.activeElement === receiverSelect || receiverSelect.matches(':focus')) {
+        return; // Never overwrite options while user is clicking/viewing the select!
+    }
+
+    let optActive = document.getElementById('optgroup_active');
+    let optOffline = document.getElementById('optgroup_offline');
+    if (!optActive) {
+        optActive = document.createElement('optgroup');
+        optActive.id = 'optgroup_active';
+        optActive.label = '🟢 Logged In & Working (Active)';
+        receiverSelect.appendChild(optActive);
+    }
+    if (!optOffline) {
+        optOffline = document.createElement('optgroup');
+        optOffline.id = 'optgroup_offline';
+        optOffline.label = '⚪ Logged Out (Offline)';
+        receiverSelect.appendChild(optOffline);
+    }
+
+    const curVal = receiverSelect.value;
+    const newActiveHtml = (activeUsers || [])
+        .filter(u => u.user_id !== currentUserId)
+        .map(u => `<option value="${escapeHtml(u.user_id)}">🟢 ${escapeHtml(u.name)} (${escapeHtml(u.role.charAt(0).toUpperCase() + u.role.slice(1))})</option>`)
+        .join('');
+
+    const newOfflineHtml = (offlineUsers || [])
+        .filter(u => u.user_id !== currentUserId)
+        .map(u => `<option value="${escapeHtml(u.user_id)}">⚪ ${escapeHtml(u.name)} (${escapeHtml(u.role.charAt(0).toUpperCase() + u.role.slice(1))})</option>`)
+        .join('');
+
+    if (optActive.innerHTML !== newActiveHtml) optActive.innerHTML = newActiveHtml;
+    if (optOffline.innerHTML !== newOfflineHtml) optOffline.innerHTML = newOfflineHtml;
+    if (curVal) receiverSelect.value = curVal;
+}
+
+// ----------------------------------------------------
+// Real-Time Direct SSE Stream & Instant BroadcastChannel
+// ----------------------------------------------------
+let liveEventSource = null;
+let reconnectTimer = null;
+
+function updateLiveStatusBadge(isConnected) {
+    const statusText = document.getElementById('employee_live_status_text');
+    const badge = document.getElementById('employee_live_status_badge');
+    if (statusText) {
+        statusText.textContent = isConnected ? '● LIVE REAL-TIME (0ms)' : '● CONNECTING...';
+    }
+    if (badge) {
+        if (isConnected) {
+            badge.style.background = 'rgba(16,185,129,0.15)';
+            badge.style.color = '#34d399';
+            badge.style.borderColor = 'rgba(16,185,129,0.3)';
+        } else {
+            badge.style.background = 'rgba(245,158,11,0.15)';
+            badge.style.color = '#fbbf24';
+            badge.style.borderColor = 'rgba(245,158,11,0.3)';
+        }
+    }
+}
+
+function connectSSE() {
+    if (liveEventSource && liveEventSource.readyState !== EventSource.CLOSED) {
+        return;
+    }
+    if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+    }
+
+    try {
+        liveEventSource = new EventSource('/api/live_activity/stream');
+
+        liveEventSource.addEventListener('connected', () => {
+            updateLiveStatusBadge(true);
+        });
+
+        liveEventSource.addEventListener('activity', (e) => {
+            try {
+                const data = JSON.parse(e.data);
+                handleLiveActivityEvent(data);
+            } catch(err) {
+                console.error('SSE data parse error:', err);
+            }
+        });
+
+        liveEventSource.onerror = () => {
+            updateLiveStatusBadge(false);
+            if (liveEventSource) {
+                try { liveEventSource.close(); } catch(e) {}
+                liveEventSource = null;
+            }
+            if (!reconnectTimer) {
+                reconnectTimer = setTimeout(connectSSE, 1000);
+            }
+        };
+    } catch(e) {
+        if (!reconnectTimer) {
+            reconnectTimer = setTimeout(connectSSE, 1500);
+        }
+    }
+}
+
+// Peer-to-peer BroadcastChannel listener (instant 0ms local relay)
+if (liveChannel) {
+    liveChannel.onmessage = (e) => {
+        if (!e.data) return;
+        if (e.data.type === 'sse_stream_relay' && e.data.data) {
+            handleLiveActivityEvent(e.data.data);
+        } else {
+            handleLiveActivityEvent(e.data);
+        }
+    };
+}
+
+// Connect immediately on load
+connectSSE();
+
+// ----------------------------------------------------
+// Resilient Polling (Safety net & Unread inbox)
+// ----------------------------------------------------
+async function poll() {
+    try {
+        let r = await fetch('/api/dashboard', { cache: 'no-store' });
+        let d = await r.json();
+        if(d.logged_in) {
+            let unreadEl = document.getElementById('unread');
+            if (unreadEl) unreadEl.textContent = d.unread;
+
+            // Real-Time Activity Stream Update (Fallback)
+            let empTbody = document.getElementById('employee_activity_tbody');
+            if (empTbody && d.recent_movements) {
+                let curMovJson = JSON.stringify(d.recent_movements);
+                if (curMovJson !== prevEmpMovementsJson) {
+                    empTbody.innerHTML = renderEmployeeMovementRows(d.recent_movements, isInitialEmpMovementLoad);
+                    if (d.recent_movements.length > 0) {
+                        const maxId = Math.max(...d.recent_movements.map(m => m.id));
+                        if (maxId > highestSeenEmpMovementId) {
+                            highestSeenEmpMovementId = maxId;
+                        }
+                    }
+                    prevEmpMovementsJson = curMovJson;
+                    isInitialEmpMovementLoad = false;
+                    updateEmployeeLiveCount();
+                }
+            }
+
+            // Sync secure messaging recipient dropdown
+            if (d.active_users && d.offline_users) {
+                syncReceiverDropdown(d.active_users, d.offline_users);
+            }
+        }
+    } catch(e) {}
+}
+
+setInterval(poll, 2500);
+window.addEventListener('focus', () => { connectSSE(); poll(); });
+document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') {
+        connectSSE();
+        poll();
+    }
+});
+</script>
+{% endblock %}

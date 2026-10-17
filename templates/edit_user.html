@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block title %}Edit User - Warehouse Management{% endblock %}
+
+{% block content %}
+<div style="max-width: 520px; margin: 40px auto;">
+    <div style="margin-bottom: 20px;">
+        <a href="{{ request.referrer or '/users' }}" style="color: var(--primary); text-decoration: none; font-size: 14px; font-weight: 500;">← Back</a>
+        <h1 style="margin-top: 10px; font-size: 26px;">✏️ Edit User Credentials</h1>
+        <p class="subtitle">Modify user display name, update password, and adjust role settings.</p>
+    </div>
+
+    <div class="glass panel" style="padding: 28px;">
+        <form method="post" action="/users/{{ target.id }}/edit">
+            <div style="margin-bottom: 18px;">
+                <label style="display: block; font-size: 13px; font-weight: 600; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">User ID</label>
+                <input type="text" value="{{ target.user_id }}" readonly style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: #cbd5e1; padding: 12px 14px; border-radius: 10px; font-family: monospace; font-size: 15px; cursor: not-allowed;">
+            </div>
+
+            <div style="margin-bottom: 18px;">
+                <label style="display: block; font-size: 13px; font-weight: 600; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Full Name</label>
+                <input type="text" name="name" value="{{ target.name }}" required style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(139, 92, 246, 0.4); color: #fff; padding: 12px 14px; border-radius: 10px; font-size: 15px;">
+            </div>
+
+            <div style="margin-bottom: 18px;">
+                <label style="display: block; font-size: 13px; font-weight: 600; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+                    New Password
+                    <span style="color: #64748b; font-weight: 400; text-transform: none;">(leave blank to keep current)</span>
+                </label>
+                <div style="position: relative;">
+                    <input type="password" id="target_pwd_input" name="password" placeholder="Enter new password" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid rgba(139, 92, 246, 0.4); color: #fff; padding: 12px 44px 12px 14px; border-radius: 10px; font-size: 15px;">
+                    <button type="button" onclick="let inp = document.getElementById('target_pwd_input'); inp.type = inp.type === 'password' ? 'text' : 'password';" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: transparent; border: none; color: #94a3b8; cursor: pointer; font-size: 18px;">👁️</button>
+                </div>
+            </div>
+
+            {% if user.role == 'supervisor' and target.user_id != 'SUP001' %}
+            <div style="margin-bottom: 24px;">
+                <label style="display: block; font-size: 13px; font-weight: 600; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">Role</label>
+                <select name="role" style="width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #fff; padding: 12px 14px; border-radius: 10px; font-size: 15px;">
+                    <option value="employee" {% if target.role == 'employee' %}selected{% endif %}>Employee</option>
+                    <option value="manager" {% if target.role == 'manager' %}selected{% endif %}>Manager</option>
+                    <option value="supervisor" {% if target.role == 'supervisor' %}selected{% endif %}>Supervisor</option>
+                </select>
+            </div>
+            {% endif %}
+
+            <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px;">
+                <a href="{{ request.referrer or '/users' }}" class="btn" style="background: rgba(255,255,255,0.08); color: #cbd5e1; padding: 12px 20px; text-decoration: none;">Cancel</a>
+                <button type="submit" class="btn btn-primary" style="background: #8b5cf6; padding: 12px 24px; font-weight: 600;">💾 Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
